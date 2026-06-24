@@ -33,6 +33,7 @@ import { AttendanceSummaryMap, backfillAttendanceSummaries, subscribeToAttendanc
 import { KnockoutTeamsMap, saveKnockoutTeamAssignment, subscribeToKnockoutTeams } from "@/lib/knockoutTeams";
 import { saveKnockoutWindowModification } from "@/lib/predictions";
 import { closeModificationWindow } from "@/lib/results";
+import { initMessaging } from "@/lib/messaging";
 
 export default function Home() {
 
@@ -56,6 +57,10 @@ export default function Home() {
 
   const { appUser, loadingAuth, isAdmin } = useAuth();
   const { theme, toggleTheme } = useTheme();
+
+  useEffect(() => {
+    if (appUser?.uid) initMessaging(appUser.uid);
+  }, [appUser?.uid]);
 
   const primaryTabs: TabItem[] = [
     { id: "matches", label: "Partidos" },
