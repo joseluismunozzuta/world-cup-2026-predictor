@@ -6,12 +6,14 @@ export function TeamPickerModal({
     title,
     disabledTeamId,
     isSaving,
+    hideFavorites,
     onClose,
     onSelectTeam,
 }: {
     title: string;
     disabledTeamId?: string;
     isSaving: boolean;
+    hideFavorites?: boolean;
     onClose: () => void;
     onSelectTeam: (teamId: string) => void;
 }) {
@@ -36,7 +38,7 @@ export function TeamPickerModal({
         );
     });
 
-    const showFavorites = search.trim().length === 0;
+    const showFavorites = search.trim().length === 0 && !hideFavorites;
 
     return (
         <div className="fixed inset-0 z-50 flex bg-black/60 px-4 justify-center items-center pb-4">

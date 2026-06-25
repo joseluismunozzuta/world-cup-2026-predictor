@@ -24,7 +24,7 @@ type Props = {
     ) => Promise<void>;
     onBackfillAttendanceSummaries: () => Promise<void>;
     knockoutTeams: KnockoutTeamsMap;
-    onSaveKnockoutTeams: (matchId: string, homeTeamId: string, awayTeamId: string) => Promise<void>;
+    onSaveKnockoutTeams: (matchId: string, slot: "home" | "away", teamId: string) => Promise<void>;
 };
 
 type AdminAction =
@@ -59,7 +59,7 @@ export function AdminPanel({
 
     // Knockout team assignment state: { [matchId]: { home, away } } — stores fifaCode (lowercase)
     const [knockoutDraft, setKnockoutDraft] = useState<Record<string, { home: string; away: string }>>({});
-    const [savingKnockout, setSavingKnockout] = useState<string | null>(null);
+    const [savingKnockout, setSavingKnockout] = useState<{ matchId: string; slot: "home" | "away" } | null>(null);
     // Which match + slot is currently picking: { matchId, slot: "home" | "away" }
     const [activePicker, setActivePicker] = useState<{ matchId: string; slot: "home" | "away" } | null>(null);
 
@@ -386,17 +386,28 @@ export function AdminPanel({
                                     </div>
                                 </div>
 
-                                <button
-                                    disabled={!draft.home || !draft.away || savingKnockout === match.id}
-                                    onClick={async () => {
-                                        setSavingKnockout(match.id);
-                                        await onSaveKnockoutTeams(match.id, draft.home, draft.away);
-                                        setSavingKnockout(null);
-                                    }}
-                                    className="mt-3 w-full rounded-2xl bg-gray-900 py-3 text-sm font-black text-white disabled:opacity-40"
-                                >
-                                    {savingKnockout === match.id ? "Guardando..." : "Guardar equipos"}
-                                </button>
+                                <div className="mt-3 grid grid-cols-2 gap-2">
+                                    {(["home", "away"] as const).map((slot) => {
+                                        const teamId = slot === "home" ? draft.home : draft.away;
+                                        const isSaving = savingKnockout?.matchId === match.id && savingKnockout?.slot === slot;
+                                        const savedTeamId = slot === "home" ? saved?.homeTeamId : saved?.awayTeamId;
+                                        const alreadySaved = savedTeamId === teamId && !!teamId;
+                                        return (
+                                            <button
+                                                key={slot}
+                                                disabled={!teamId || isSaving || alreadySaved}
+                                                onClick={async () => {
+                                                    setSavingKnockout({ matchId: match.id, slot });
+                                                    await onSaveKnockoutTeams(match.id, slot, teamId);
+                                                    setSavingKnockout(null);
+                                                }}
+                                                className="rounded-2xl bg-gray-900 dark:bg-gray-100 dark:text-gray-900 py-3 text-sm font-black text-white disabled:opacity-40"
+                                            >
+                                                {isSaving ? "Guardando..." : alreadySaved ? "✓ Guardado" : `Guardar ${slot === "home" ? "local" : "visitante"}`}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
                             </div>
                         );
                     })}
@@ -408,13 +419,15 @@ export function AdminPanel({
                             home: knockoutTeams[matchId]?.homeTeamId ?? "",
                             away: knockoutTeams[matchId]?.awayTeamId ?? "",
                         };
-                        const disabledFifaCode = slot === "home" ? draft.away : draft.home;
+                        const oppositeSlot = slot === "home" ? "away" : "home";
+                        const disabledFifaCode = draft[oppositeSlot] || knockoutTeams[matchId]?.[oppositeSlot === "home" ? "homeTeamId" : "awayTeamId"] || "";
                         const disabledTeamId = disabledFifaCode ? fifaCodeToTeamId(disabledFifaCode) : undefined;
 
                         return (
                             <TeamPickerModal
                                 title={slot === "home" ? "Seleccionar local" : "Seleccionar visitante"}
                                 disabledTeamId={disabledTeamId}
+                                hideFavorites
                                 isSaving={false}
                                 onClose={() => setActivePicker(null)}
                                 onSelectTeam={(teamId) => {

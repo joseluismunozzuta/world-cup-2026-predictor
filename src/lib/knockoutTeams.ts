@@ -43,21 +43,15 @@ export async function saveKnockoutTeamAssignment({
     updatedBy,
 }: {
     matchId: string;
-    homeTeamId: string;
-    awayTeamId: string;
+    homeTeamId?: string;
+    awayTeamId?: string;
     updatedBy: string;
 }) {
     const ref = doc(db, "knockoutTeams", matchId);
 
-    await setDoc(
-        ref,
-        {
-            matchId,
-            homeTeamId,
-            awayTeamId,
-            updatedBy,
-            updatedAt: serverTimestamp(),
-        },
-        { merge: true }
-    );
+    const data: Record<string, unknown> = { matchId, updatedBy, updatedAt: serverTimestamp() };
+    if (homeTeamId !== undefined) data.homeTeamId = homeTeamId;
+    if (awayTeamId !== undefined) data.awayTeamId = awayTeamId;
+
+    await setDoc(ref, data, { merge: true });
 }

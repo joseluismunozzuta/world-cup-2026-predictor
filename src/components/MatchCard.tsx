@@ -45,14 +45,17 @@ export function MatchCard({ match, onSelect, status, attendanceCount, isWatchPar
 
             <div className="grid min-h-18 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 text-lg font-bold text-gray-900 dark:text-gray-100">
                 <div className="flex flex-col min-w-0 items-center justify-end gap-2">
-                    {homeTeam && (
+                    {homeTeam ? (
                         <>
                             <CountryFlag homeTeam={homeTeam} />
-
                             <span className="min-w-0 text-center leading-tight line-clamp-2">
                                 {homeTeam.nameEs}
                             </span>
                         </>
+                    ) : (
+                        <span className="min-w-0 text-center text-sm leading-tight line-clamp-2 text-gray-400 dark:text-gray-500 italic">
+                            {match.homeLabel ?? "Por definir"}
+                        </span>
                     )}
                 </div>
 
@@ -61,14 +64,17 @@ export function MatchCard({ match, onSelect, status, attendanceCount, isWatchPar
                 </span>
 
                 <div className="flex flex-col min-w-0 items-center justify-start gap-2">
-                    {awayTeam && (
+                    {awayTeam ? (
                         <>
                             <CountryFlag homeTeam={awayTeam} />
-
                             <span className="min-w-0 text-center leading-tight line-clamp-2">
                                 {awayTeam.nameEs}
                             </span>
                         </>
+                    ) : (
+                        <span className="min-w-0 text-center text-sm leading-tight line-clamp-2 text-gray-400 dark:text-gray-500 italic">
+                            {match.awayLabel ?? "Por definir"}
+                        </span>
                     )}
                 </div>
             </div>

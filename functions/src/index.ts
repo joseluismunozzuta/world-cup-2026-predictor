@@ -33,7 +33,7 @@ function getLabel(m: MatchEntry): { home: string; away: string } {
 
 const MATCHES: MatchEntry[] = [
     // TEST — borrar después de probar
-    { id: "test-match", kickoff: "2026-06-24T03:10:00-05:00", home: "BRA", away: "ARG" },
+    { id: "test-match", kickoff: "2026-06-24T03:20:00-05:00", home: "BRA", away: "ARG" },
     // Fase de grupos
     { id: "m001-mex-rsa", kickoff: "2026-06-11T14:00:00-05:00", home: "MEX", away: "RSA" },
     { id: "m002-kor-cze", kickoff: "2026-06-11T21:00:00-05:00", home: "KOR", away: "CZE" },

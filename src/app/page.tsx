@@ -115,8 +115,8 @@ export default function Home() {
       if (!assignment) return match;
       return {
         ...match,
-        homeTeamId: assignment.homeTeamId,
-        awayTeamId: assignment.awayTeamId,
+        homeTeamId: assignment.homeTeamId || match.homeTeamId,
+        awayTeamId: assignment.awayTeamId || match.awayTeamId,
       };
     });
   }, [knockoutTeams]);
@@ -482,9 +482,19 @@ export default function Home() {
     await backfillAttendanceSummaries({ partyId: appUser.activePartyId });
   };
 
-  const handleSaveKnockoutTeams = async (matchId: string, homeTeamId: string, awayTeamId: string) => {
+  const handleSaveKnockoutTeams = async (matchId: string, slot: "home" | "away", teamId: string) => {
     if (!appUser?.uid || !isAdmin) return;
-    await saveKnockoutTeamAssignment({ matchId, homeTeamId, awayTeamId, updatedBy: appUser.uid });
+    setIsSavingAdmin(true);
+    try {
+      await saveKnockoutTeamAssignment({
+        matchId,
+        homeTeamId: slot === "home" ? teamId : undefined,
+        awayTeamId: slot === "away" ? teamId : undefined,
+        updatedBy: appUser.uid,
+      });
+    } finally {
+      setIsSavingAdmin(false);
+    }
   };
 
   const handleCloseModificationWindow = async (matchId: string) => {
