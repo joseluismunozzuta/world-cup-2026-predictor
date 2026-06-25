@@ -243,7 +243,7 @@ export function PredictionGroup({
                                     </AccordionTrigger>
 
                                     <AccordionContent className="py-0.5">
-                                        <div className="space-y-2">
+                                        <div>
                                             {(() => {
                                                 const isFinished = result?.status === "finished";
 
@@ -267,127 +267,145 @@ export function PredictionGroup({
                                                 );
 
                                                 const sortedUsers = [...partyUsers].sort((a, b) => {
-                                                    if (!isFinished) return 0;
                                                     const pA = predictionsByUserId[a.uid];
                                                     const pB = predictionsByUserId[b.uid];
-                                                    const pointsA = pA && "points" in pA ? (pA.points as number) : -1;
-                                                    const pointsB = pB && "points" in pB ? (pB.points as number) : -1;
+                                                    // Users without prediction go last
+                                                    if (!pA && !pB) return 0;
+                                                    if (!pA) return 1;
+                                                    if (!pB) return -1;
+                                                    if (!isFinished) return 0;
+                                                    const pointsA = "points" in pA ? (pA.points as number) : -1;
+                                                    const pointsB = "points" in pB ? (pB.points as number) : -1;
                                                     return pointsB - pointsA;
                                                 });
 
-                                                return sortedUsers.map((user) => {
-                                                    const userPrediction = predictionsByUserId[user.uid];
+                                                return (
+                                                    <div className="rounded-2xl bg-gray-50 dark:bg-white/10 divide-y divide-gray-100 dark:divide-white/5 overflow-hidden">
+                                                        {sortedUsers.map((user) => {
+                                                            const userPrediction = predictionsByUserId[user.uid];
 
-                                                    if (!userPrediction) return null;
-
-                                                    const points =
-                                                        isFinished && "points" in userPrediction
-                                                            ? userPrediction.points
-                                                            : null;
-
-                                                    const isKnockout = match.stage !== "group";
-                                                    const qualifiedTeamId = "qualifiedTeamId" in userPrediction ? userPrediction.qualifiedTeamId : undefined;
-                                                    const penaltiesIfDraw = "penaltiesIfDraw" in userPrediction ? userPrediction.penaltiesIfDraw : undefined;
-                                                    const qualifiedTeam = qualifiedTeamId ? teamsByFifaCode[qualifiedTeamId] : null;
-                                                    const isDraw = userPrediction.homeScore === userPrediction.awayScore;
-
-                                                    const isMyRow = isFinished && currentUserId && user.uid === currentUserId && homeTeam && awayTeam && result;
-
-                                                    return (
-                                                        <div
-                                                            key={user.uid}
-                                                            className="rounded-2xl bg-gray-50 dark:bg-white/10 px-3 py-2 text-sm space-y-1"
-                                                        >
-                                                            <div className="flex items-center gap-1">
-                                                                <div className={`${isMyRow ? "w-[38%]" : "w-[45%]"} flex items-center gap-2 min-w-0`}>
-                                                                    <Avatar>
-                                                                        <AvatarImage
-                                                                            src={user.avatarUrl ?? user.photoURL ?? undefined}
-                                                                            referrerPolicy="no-referrer"
-                                                                        />
-                                                                        <AvatarFallback>
-                                                                            {user.name.charAt(0).toUpperCase()}
-                                                                        </AvatarFallback>
-                                                                    </Avatar>
-
-                                                                    <span className="truncate font-semibold text-gray-800 dark:text-gray-100 text-[11px]">
-                                                                        {"userName" in userPrediction ? userPrediction.userName : user.name}
-                                                                    </span>
-                                                                </div>
-
-                                                                <h1 className={`${isMyRow ? "w-[27%]" : "w-[30%]"} text-sm text-gray-700 dark:text-gray-200 font-bold text-center flex items-center justify-center gap-1`}>
-                                                                    {userPrediction.homeScore}-{userPrediction.awayScore}
-                                                                    {"jokerActivated" in userPrediction && userPrediction.jokerActivated && (
-                                                                        <span title="Joker activado">🃏</span>
-                                                                    )}
-                                                                </h1>
-
-                                                                {points !== null && (
-                                                                    <span
-                                                                        className={`${isMyRow ? "w-[22%]" : "w-[25%]"} rounded-full px-2 py-1 text-xs font-black text-center ${points > 0
-                                                                                ? "bg-green-100 text-green-700"
-                                                                                : "bg-red-200 text-red-500"
-                                                                            }`}
-                                                                    >
-                                                                        +{points}
-                                                                    </span>
-                                                                )}
-
-                                                                {/* Share button inline — only on current user's finished row */}
-                                                                {isMyRow && (
-                                                                    <div className="w-[13%] flex justify-end flex-shrink-0">
-                                                                        <button
-                                                                            disabled={loadingShareMatchId === match.id}
-                                                                            onClick={async (e) => {
-                                                                                e.stopPropagation();
-                                                                                setLoadingShareMatchId(match.id);
-                                                                                const [homeFlagDataUrl, awayFlagDataUrl] = await Promise.all([
-                                                                                    fetchFlagDataUrl(homeTeam.iso2),
-                                                                                    fetchFlagDataUrl(awayTeam.iso2),
-                                                                                ]);
-                                                                                setLoadingShareMatchId(null);
-                                                                                setShareTarget({
-                                                                                    homeTeamName: homeTeam.name,
-                                                                                    awayTeamName: awayTeam.name,
-                                                                                    homeFlagDataUrl,
-                                                                                    awayFlagDataUrl,
-                                                                                    prediction: {
-                                                                                        homeScore: userPrediction.homeScore,
-                                                                                        awayScore: userPrediction.awayScore,
-                                                                                        jokerActivated: "jokerActivated" in userPrediction ? (userPrediction.jokerActivated as boolean) : false,
-                                                                                    },
-                                                                                    result: { homeScore: result.homeScore, awayScore: result.awayScore },
-                                                                                    points: points ?? 0,
-                                                                                    userName: user.name,
-                                                                                });
-                                                                            }}
-                                                                            className="flex items-center justify-center w-7 h-7 rounded-full bg-gradient-to-br from-violet-500 to-pink-500 text-white shadow-md hover:scale-105 transition-transform disabled:opacity-50"
-                                                                            title="Compartir mi pronóstico"
-                                                                        >
-                                                                            {loadingShareMatchId === match.id
-                                                                                ? <span className="text-[9px]">...</span>
-                                                                                : <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
-                                                                            }
-                                                                        </button>
+                                                            if (!userPrediction) {
+                                                                return (
+                                                                    <div key={user.uid} className="flex items-center gap-2 px-3 py-1.5">
+                                                                        <Avatar className="h-6 w-6 shrink-0">
+                                                                            <AvatarImage src={user.avatarUrl ?? user.photoURL ?? undefined} referrerPolicy="no-referrer" />
+                                                                            <AvatarFallback className="text-[9px]">{user.name.charAt(0).toUpperCase()}</AvatarFallback>
+                                                                        </Avatar>
+                                                                        <span className="flex-1 truncate text-[11px] font-semibold text-gray-400 dark:text-gray-500">
+                                                                            {user.name}
+                                                                        </span>
+                                                                        <span className="text-[9px] font-black uppercase tracking-wide text-gray-300 dark:text-gray-600">
+                                                                            No pronosticó
+                                                                        </span>
                                                                     </div>
-                                                                )}
-                                                            </div>
+                                                                );
+                                                            }
 
-                                                            {isKnockout && qualifiedTeam && (
-                                                                <div className="flex items-center gap-2 pl-1 text-[10px] text-gray-500 dark:text-gray-400 font-medium">
-                                                                    <span>Clasifica:</span>
-                                                                    <span className="font-bold text-gray-700 dark:text-gray-200">{qualifiedTeam.name}</span>
-                                                                    {isDraw && penaltiesIfDraw !== undefined && (
-                                                                        <>
-                                                                            <span className="text-gray-300">·</span>
-                                                                            <span>Penales: <span className="font-bold text-gray-700">{penaltiesIfDraw ? "Sí" : "No"}</span></span>
-                                                                        </>
+                                                            const points =
+                                                                isFinished && "points" in userPrediction
+                                                                    ? userPrediction.points
+                                                                    : null;
+
+                                                            const isKnockout = match.stage !== "group";
+                                                            const qualifiedTeamId = "qualifiedTeamId" in userPrediction ? userPrediction.qualifiedTeamId : undefined;
+                                                            const penaltiesIfDraw = "penaltiesIfDraw" in userPrediction ? userPrediction.penaltiesIfDraw : undefined;
+                                                            const qualifiedTeam = qualifiedTeamId ? teamsByFifaCode[qualifiedTeamId] : null;
+                                                            const isDraw = userPrediction.homeScore === userPrediction.awayScore;
+
+                                                            const isMyRow = isFinished && currentUserId && user.uid === currentUserId && homeTeam && awayTeam && result;
+
+                                                            return (
+                                                                <div key={user.uid} className="px-3 py-1.5 text-sm space-y-0.5">
+                                                                    <div className="flex items-center gap-1">
+                                                                        <div className={`${isMyRow ? "w-[50%]" : "w-[62%]"} flex items-center gap-2 min-w-0`}>
+                                                                            <Avatar className="h-6 w-6 shrink-0">
+                                                                                <AvatarImage
+                                                                                    src={user.avatarUrl ?? user.photoURL ?? undefined}
+                                                                                    referrerPolicy="no-referrer"
+                                                                                />
+                                                                                <AvatarFallback className="text-[9px]">
+                                                                                    {user.name.charAt(0).toUpperCase()}
+                                                                                </AvatarFallback>
+                                                                            </Avatar>
+                                                                            <span className="truncate font-semibold text-gray-800 dark:text-gray-100 text-[11px]">
+                                                                                {"userName" in userPrediction ? userPrediction.userName : user.name}
+                                                                            </span>
+                                                                        </div>
+
+                                                                        <div className={`${isMyRow ? "w-[15%]" : "w-[18%]"} text-sm text-gray-700 dark:text-gray-200 font-bold text-center flex items-center justify-center gap-1`}>
+                                                                            {userPrediction.homeScore}-{userPrediction.awayScore}
+                                                                            {"jokerActivated" in userPrediction && userPrediction.jokerActivated && (
+                                                                                <span title="Joker activado">🃏</span>
+                                                                            )}
+                                                                        </div>
+
+                                                                        {points !== null && (
+                                                                            <span
+                                                                                className={`${isMyRow ? "w-[22%]" : "w-[20%]"} rounded-full px-2 py-0.5 text-xs font-black text-center ${points > 0
+                                                                                        ? "bg-green-100 text-green-700"
+                                                                                        : "bg-red-200 text-red-500"
+                                                                                    }`}
+                                                                            >
+                                                                                +{points}
+                                                                            </span>
+                                                                        )}
+
+                                                                        {isMyRow && (
+                                                                            <div className="w-[13%] flex justify-end flex-shrink-0">
+                                                                                <button
+                                                                                    disabled={loadingShareMatchId === match.id}
+                                                                                    onClick={async (e) => {
+                                                                                        e.stopPropagation();
+                                                                                        setLoadingShareMatchId(match.id);
+                                                                                        const [homeFlagDataUrl, awayFlagDataUrl] = await Promise.all([
+                                                                                            fetchFlagDataUrl(homeTeam.iso2),
+                                                                                            fetchFlagDataUrl(awayTeam.iso2),
+                                                                                        ]);
+                                                                                        setLoadingShareMatchId(null);
+                                                                                        setShareTarget({
+                                                                                            homeTeamName: homeTeam.name,
+                                                                                            awayTeamName: awayTeam.name,
+                                                                                            homeFlagDataUrl,
+                                                                                            awayFlagDataUrl,
+                                                                                            prediction: {
+                                                                                                homeScore: userPrediction.homeScore,
+                                                                                                awayScore: userPrediction.awayScore,
+                                                                                                jokerActivated: "jokerActivated" in userPrediction ? (userPrediction.jokerActivated as boolean) : false,
+                                                                                            },
+                                                                                            result: { homeScore: result.homeScore, awayScore: result.awayScore },
+                                                                                            points: points ?? 0,
+                                                                                            userName: user.name,
+                                                                                        });
+                                                                                    }}
+                                                                                    className="flex items-center justify-center w-7 h-7 rounded-full bg-gradient-to-br from-violet-500 to-pink-500 text-white shadow-md hover:scale-105 transition-transform disabled:opacity-50"
+                                                                                    title="Compartir mi pronóstico"
+                                                                                >
+                                                                                    {loadingShareMatchId === match.id
+                                                                                        ? <span className="text-[9px]">...</span>
+                                                                                        : <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+                                                                                    }
+                                                                                </button>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+
+                                                                    {isKnockout && qualifiedTeam && (
+                                                                        <div className="flex items-center gap-2 pl-8 text-[10px] text-gray-500 dark:text-gray-400 font-medium">
+                                                                            <span>Clasifica:</span>
+                                                                            <span className="font-bold text-gray-700 dark:text-gray-200">{qualifiedTeam.name}</span>
+                                                                            {isDraw && penaltiesIfDraw !== undefined && (
+                                                                                <>
+                                                                                    <span className="text-gray-300">·</span>
+                                                                                    <span>Penales: <span className="font-bold text-gray-700">{penaltiesIfDraw ? "Sí" : "No"}</span></span>
+                                                                                </>
+                                                                            )}
+                                                                        </div>
                                                                     )}
                                                                 </div>
-                                                            )}
-                                                        </div>
-                                                    );
-                                                });
+                                                            );
+                                                        })}
+                                                    </div>
+                                                );
                                             })()}
                                         </div>
 
