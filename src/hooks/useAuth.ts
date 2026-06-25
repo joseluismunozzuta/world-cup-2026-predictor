@@ -12,15 +12,18 @@ export function useAuth() {
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
-            setFirebaseUser(user);
-
             if (!user) {
+                setFirebaseUser(null);
                 setAppUser(null);
                 setLoadingAuth(false);
                 return;
             }
 
             const createdOrExistingUser = await getOrCreateUser(user);
+
+            // Batch both updates together to avoid intermediate renders
+            // that would re-create Firestore subscriptions unnecessarily
+            setFirebaseUser(user);
             setAppUser(createdOrExistingUser);
             setLoadingAuth(false);
         });

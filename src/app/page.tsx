@@ -660,8 +660,16 @@ export default function Home() {
             className="absolute right-14 flex h-11 w-11 items-center justify-center rounded-full bg-white dark:bg-gray-800 shadow-lg transition-all duration-200 hover:scale-105 active:scale-95"
           >
             {theme === "dark" ? (
-              <svg className="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 2.25a.75.75 0 0 1 .75.75v2.25a.75.75 0 0 1-1.5 0V3a.75.75 0 0 1 .75-.75ZM7.5 12a4.5 4.5 0 1 1 9 0 4.5 4.5 0 0 1-9 0ZM18.894 6.166a.75.75 0 0 0-1.06-1.06l-1.591 1.59a.75.75 0 1 0 1.06 1.061l1.591-1.59ZM21.75 12a.75.75 0 0 1-.75.75h-2.25a.75.75 0 0 1 0-1.5H21a.75.75 0 0 1 .75.75ZM17.834 18.894a.75.75 0 0 0 1.06-1.06l-1.59-1.591a.75.75 0 1 0-1.061 1.06l1.59 1.591ZM12 18a.75.75 0 0 1 .75.75V21a.75.75 0 0 1-1.5 0v-2.25A.75.75 0 0 1 12 18ZM7.166 17.834a.75.75 0 0 0-1.06 1.06l1.59 1.591a.75.75 0 1 0 1.061-1.06l-1.591-1.591ZM6 12a.75.75 0 0 1-.75.75H3a.75.75 0 0 1 0-1.5h2.25A.75.75 0 0 1 6 12ZM6.166 6.166a.75.75 0 0 0 1.06 1.06l1.591-1.59a.75.75 0 1 0-1.06-1.061L6.166 6.166Z" />
+              <svg className="h-5 w-5 text-yellow-400" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="4" fill="currentColor" stroke="none" />
+                <line x1="12" y1="2" x2="12" y2="5" />
+                <line x1="12" y1="19" x2="12" y2="22" />
+                <line x1="2" y1="12" x2="5" y2="12" />
+                <line x1="19" y1="12" x2="22" y2="12" />
+                <line x1="4.93" y1="4.93" x2="7.05" y2="7.05" />
+                <line x1="16.95" y1="16.95" x2="19.07" y2="19.07" />
+                <line x1="19.07" y1="4.93" x2="16.95" y2="7.05" />
+                <line x1="7.05" y1="16.95" x2="4.93" y2="19.07" />
               </svg>
             ) : (
               <svg className="h-5 w-5 text-gray-700" fill="currentColor" viewBox="0 0 24 24">
