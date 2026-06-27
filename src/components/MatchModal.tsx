@@ -35,6 +35,7 @@ type Props = {
     onSaveWindowModification: (matchId: string, qualifiedTeamId: string, penaltiesIfDraw: boolean) => void;
     onCloseModificationWindow: (matchId: string) => void;
     jokersUsed: number;
+    jokersEarned: number;
     status: MatchStatus;
     attendees: AppUser[];
     notAttendees: AppUser[];
@@ -59,7 +60,7 @@ const finishedAttendanceOptions: AttendanceOption[] = [
 export function MatchModal({ match, onClose, attendanceStatus, onClearAttendance, onAttendanceChange,
     onSavePrediction, prediction, onSaveResult, resultMatch, status, attendees, notAttendees,
     appUser, isWatchParty, watchParty, members, onSavingWatchPartyChange,
-    onSaveWindowModification, onCloseModificationWindow, jokersUsed }: Props) {
+    onSaveWindowModification, onCloseModificationWindow, jokersUsed, jokersEarned }: Props) {
 
     const [isPredicting, setIsPredicting] = useState(false);
     const [isSavingResult, setIsSavingResult] = useState(false);
@@ -94,6 +95,7 @@ export function MatchModal({ match, onClose, attendanceStatus, onClearAttendance
 
     const isKnockout = match.stage !== "group";
     const isFinished = resultMatch?.status === "finished";
+    const isLive = status === "live";
     const scoreResult = prediction && isFinished ? calculatePredictionPoints(prediction, resultMatch) : null;
 
     const homeTeam = match.homeTeamId ? teamsByFifaCode[match.homeTeamId] : null;
@@ -108,7 +110,7 @@ export function MatchModal({ match, onClose, attendanceStatus, onClearAttendance
         windowClosesAt > new Date();
 
     // Jokers: 3 max per World Cup. If current prediction already has joker, don't count it twice.
-    const JOKERS_MAX = 3;
+    const JOKERS_MAX = 3 + jokersEarned;
     const jokersUsedExcludingThis = prediction?.jokerActivated ? jokersUsed - 1 : jokersUsed;
     const jokersRemaining = JOKERS_MAX - jokersUsedExcludingThis;
     const canActivateJoker = jokerActive || jokersRemaining > 0;
@@ -437,7 +439,7 @@ export function MatchModal({ match, onClose, attendanceStatus, onClearAttendance
                     </>
                     )}
 
-                    {!isFinished && isAdmin && !isWatchParty && !isPromotingWatchParty && (
+                    {!isFinished && !isLive && isAdmin && !isWatchParty && !isPromotingWatchParty && (
                         <div className="mt-6 rounded-3xl bg-emerald-50 dark:bg-emerald-950/40 p-6 shadow-lg">
                             <p className="text-lg font-black text-gray-950 dark:text-gray-50">
                                 ¿Veremos este partido juntos?
@@ -456,7 +458,7 @@ export function MatchModal({ match, onClose, attendanceStatus, onClearAttendance
                         </div>
                     )}
 
-                    {!isFinished && isAdmin && !isWatchParty && isPromotingWatchParty && (
+                    {!isFinished && !isLive && isAdmin && !isWatchParty && isPromotingWatchParty && (
                         <section className="mt-6 rounded-3xl bg-emerald-50 dark:bg-emerald-950/40 p-6 shadow-lg">
                             <p className="text-lg font-black text-gray-950 dark:text-gray-50">
                                 Proponer junte
@@ -599,6 +601,35 @@ export function MatchModal({ match, onClose, attendanceStatus, onClearAttendance
                                     </div>
                                 )}
 
+                                {isKnockout && prediction.qualifiedTeamId && homeTeam && awayTeam && (() => {
+                                    const qualTeam = teamsByFifaCode[prediction.qualifiedTeamId];
+                                    const isDraw = prediction.homeScore === prediction.awayScore;
+                                    return (
+                                        <div className="mt-3 overflow-hidden rounded-2xl shadow-sm">
+                                            <div className="bg-cyan-600 px-3 py-1.5 text-center">
+                                                <p className="text-[10px] font-black uppercase tracking-widest text-violet-200">Clasifica</p>
+                                            </div>
+                                            <div className="bg-cyan-50 dark:bg-cyan-950/40 px-4 py-3 flex items-center justify-center gap-3">
+                                                {qualTeam && (
+                                                    <img
+                                                        src={`https://flagcdn.com/w40/${qualTeam.iso2.toLowerCase()}.png`}
+                                                        alt={qualTeam.nameEs}
+                                                        className="h-6 w-auto rounded-sm shadow-sm"
+                                                    />
+                                                )}
+                                                <span className="text-base font-black text-cyan-800 dark:text-cyan-200">
+                                                    {qualTeam?.nameEs ?? prediction.qualifiedTeamId}
+                                                </span>
+                                                {isDraw && prediction.penaltiesIfDraw !== undefined && (
+                                                    <span className="rounded-full bg-cyan-200 dark:bg-cyan-800 px-2.5 py-0.5 text-[10px] font-black text-cyan-700 dark:text-cyan-200 uppercase tracking-wide">
+                                                        {prediction.penaltiesIfDraw ? "En penales" : "Tiempo extra"}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
+
                                 {canPredict && !isFinished && (
                                     <button
                                         onClick={() => {
@@ -665,41 +696,82 @@ export function MatchModal({ match, onClose, attendanceStatus, onClearAttendance
 
                                     {/* Knockout extra fields */}
                                     {isKnockout && homeScore !== "" && awayScore !== "" && homeTeam && awayTeam && (
-                                        <div className="mt-4 rounded-2xl bg-white dark:bg-gray-600 p-4 space-y-4 border border-gray-100 dark:border-gray-500">
-                                            <div>
-                                                <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">¿Quién clasifica?</p>
-                                                {predictedDraw ? (
-                                                    <div className="flex gap-2">
-                                                        <button
-                                                            onClick={() => setKnockoutQualified(match.homeTeamId ?? "")}
-                                                            className={`flex-1 rounded-xl py-2 text-sm font-bold border ${knockoutQualified === match.homeTeamId ? "bg-gray-900 text-white border-gray-900" : "bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-500"}`}
-                                                        >
-                                                            {homeTeam.name}
-                                                        </button>
-                                                        <button
-                                                            onClick={() => setKnockoutQualified(match.awayTeamId ?? "")}
-                                                            className={`flex-1 rounded-xl py-2 text-sm font-bold border ${knockoutQualified === match.awayTeamId ? "bg-gray-900 text-white border-gray-900" : "bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-500"}`}
-                                                        >
-                                                            {awayTeam.name}
-                                                        </button>
-                                                    </div>
-                                                ) : (
-                                                    <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">
-                                                        {knockoutQualified === match.homeTeamId ? homeTeam.name : knockoutQualified === match.awayTeamId ? awayTeam.name : "—"}
-                                                        <span className="ml-2 text-xs text-gray-400 dark:text-gray-500">(según tu marcador)</span>
-                                                    </p>
-                                                )}
+                                        <div className="mt-4 rounded-2xl overflow-hidden border border-cyan-200 dark:border-cyan-700/50">
+                                            {/* Header */}
+                                            <div className="bg-cyan-600 px-4 py-2.5 flex items-center gap-2">
+                                                <span className="text-base">🏆</span>
+                                                <p className="text-xs font-black text-white uppercase tracking-wider">Fase eliminatoria</p>
                                             </div>
 
-                                            {predictedDraw && (
+                                            <div className="bg-cyan-50 dark:bg-cyan-950/40 p-4 space-y-4">
+                                                {/* ¿Quién clasifica? */}
                                                 <div>
-                                                    <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">¿Hay penales?</p>
-                                                    <div className="flex gap-2">
-                                                        <button onClick={() => setKnockoutPenalties(false)} className={`flex-1 rounded-xl py-2 text-sm font-bold border ${!knockoutPenalties ? "bg-gray-900 text-white border-gray-900" : "bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-500"}`}>No</button>
-                                                        <button onClick={() => setKnockoutPenalties(true)} className={`flex-1 rounded-xl py-2 text-sm font-bold border ${knockoutPenalties ? "bg-gray-900 text-white border-gray-900" : "bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-500"}`}>Sí</button>
-                                                    </div>
+                                                    <p className="text-xs font-black text-cyan-600 dark:text-cyan-400 uppercase tracking-wider mb-2">¿Quién clasifica?</p>
+                                                    {predictedDraw ? (
+                                                        <div className="flex gap-2">
+                                                            <button
+                                                                onClick={() => setKnockoutQualified(match.homeTeamId ?? "")}
+                                                                className={`flex-1 rounded-xl py-2.5 text-sm font-black border-2 transition-all ${knockoutQualified === match.homeTeamId
+                                                                    ? "bg-cyan-600 text-white border-cyan-600 shadow-md shadow-cyan-200 dark:shadow-cyan-900"
+                                                                    : "bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-cyan-200 dark:border-cyan-700/50"}`}
+                                                            >
+                                                                {homeTeam.name}
+                                                            </button>
+                                                            <button
+                                                                onClick={() => setKnockoutQualified(match.awayTeamId ?? "")}
+                                                                className={`flex-1 rounded-xl py-2.5 text-sm font-black border-2 transition-all ${knockoutQualified === match.awayTeamId
+                                                                    ? "bg-cyan-600 text-white border-cyan-600 shadow-md shadow-cyan-200 dark:shadow-cyan-900"
+                                                                    : "bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-cyan-200 dark:border-cyan-700/50"}`}
+                                                            >
+                                                                {awayTeam.name}
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex items-center gap-2 rounded-xl bg-cyan-600 px-4 py-2.5">
+                                                            <span className="text-white text-sm font-black flex-1">
+                                                                {knockoutQualified === match.homeTeamId ? homeTeam.name : knockoutQualified === match.awayTeamId ? awayTeam.name : "—"}
+                                                            </span>
+                                                            <span className="text-cyan-200 text-xs font-medium">según tu marcador</span>
+                                                        </div>
+                                                    )}
                                                 </div>
-                                            )}
+
+                                                {/* ¿Hay penales? — solo si empate */}
+                                                {predictedDraw && (
+                                                    <div>
+                                                        <p className="text-xs font-black text-cyan-600 dark:text-cyan-400 uppercase tracking-wider mb-2">¿Hay penales?</p>
+                                                        <div className="flex gap-2">
+                                                            <button
+                                                                onClick={() => setKnockoutPenalties(false)}
+                                                                className={`flex-1 rounded-xl py-2.5 text-sm font-black border-2 transition-all ${!knockoutPenalties
+                                                                    ? "bg-cyan-600 text-white border-cyan-600 shadow-md shadow-cyan-200 dark:shadow-cyan-900"
+                                                                    : "bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-cyan-200 dark:border-cyan-700/50"}`}
+                                                            >
+                                                                No
+                                                            </button>
+                                                            <button
+                                                                onClick={() => setKnockoutPenalties(true)}
+                                                                className={`flex-1 rounded-xl py-2.5 text-sm font-black border-2 transition-all ${knockoutPenalties
+                                                                    ? "bg-cyan-600 text-white border-cyan-600 shadow-md shadow-cyan-200 dark:shadow-cyan-900"
+                                                                    : "bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-cyan-200 dark:border-cyan-700/50"}`}
+                                                            >
+                                                                Sí
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Resumen siempre visible */}
+                                                {knockoutQualified && (
+                                                    <div className="rounded-xl bg-white dark:bg-gray-700/60 px-4 py-2.5 flex items-center justify-between gap-2">
+                                                        <span className="text-xs text-gray-500 dark:text-gray-400 font-semibold">Tu predicción</span>
+                                                        <span className="text-sm font-black text-cyan-700 dark:text-cyan-300">
+                                                            Clasifica {knockoutQualified === match.homeTeamId ? homeTeam.name : awayTeam.name}
+                                                            {predictedDraw && <span className="ml-1 font-medium text-gray-500 dark:text-gray-400">· {knockoutPenalties ? "en penales" : "tiempo extra"}</span>}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                     )}
 
@@ -725,7 +797,7 @@ export function MatchModal({ match, onClose, attendanceStatus, onClearAttendance
                                                     <p className={`text-xs font-medium ${jokerActive ? "text-purple-200" : "text-purple-500"}`}>
                                                         {canActivateJoker
                                                             ? `Duplica tu puntaje si aciertas · ${jokersRemaining} restante${jokersRemaining !== 1 ? "s" : ""}`
-                                                            : "Ya usaste los 3 jokers del Mundial"}
+                                                            : `Ya usaste tus ${JOKERS_MAX} jokers del Mundial`}
                                                     </p>
                                                 </div>
                                             </div>

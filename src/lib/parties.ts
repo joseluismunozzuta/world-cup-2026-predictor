@@ -18,7 +18,15 @@ export type Party = {
     code: string;
     ownerUserId: string;
     adminUserIds?: string[];
+    jokerEarningStartDate?: string; // ISO string
 };
+
+export async function setJokerEarningStartDate(partyId: string, isoDate: string) {
+    await updateDoc(doc(db, "parties", partyId), {
+        jokerEarningStartDate: isoDate,
+        updatedAt: serverTimestamp(),
+    });
+}
 
 export async function promoteUserToAdmin(partyId: string, userId: string) {
     const batch = writeBatch(db);

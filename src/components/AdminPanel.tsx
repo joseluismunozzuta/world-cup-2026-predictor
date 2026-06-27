@@ -24,6 +24,7 @@ type Props = {
     ) => Promise<void>;
     onBackfillAttendanceSummaries: () => Promise<void>;
     onBackfillPredictionSummaries: () => Promise<void>;
+    onSetJokerStartDate: (isoDate: string) => Promise<void>;
     knockoutTeams: KnockoutTeamsMap;
     onSaveKnockoutTeams: (matchId: string, slot: "home" | "away", teamId: string) => Promise<void>;
 };
@@ -52,6 +53,7 @@ export function AdminPanel({
     onSaveSpecialResultField,
     onBackfillAttendanceSummaries,
     onBackfillPredictionSummaries,
+    onSetJokerStartDate,
     knockoutTeams,
     onSaveKnockoutTeams,
 }: Props) {
@@ -59,6 +61,12 @@ export function AdminPanel({
     const [pendingAction, setPendingAction] = useState<AdminAction>(null);
     const [activeAdminTab, setActiveAdminTab] = useState<AdminTab>("settings");
     const [backfillState, setBackfillState] = useState<"idle" | "loading" | "done">("idle");
+    const [jokerDateInput, setJokerDateInput] = useState(
+        party?.jokerEarningStartDate
+            ? party.jokerEarningStartDate.slice(0, 10)
+            : new Date().toISOString().slice(0, 10)
+    );
+    const [jokerDateState, setJokerDateState] = useState<"idle" | "saving" | "saved">("idle");
 
     // Knockout team assignment state: { [matchId]: { home, away } } — stores fifaCode (lowercase)
     const [knockoutDraft, setKnockoutDraft] = useState<Record<string, { home: string; away: string }>>({});
@@ -66,7 +74,8 @@ export function AdminPanel({
     // Which match + slot is currently picking: { matchId, slot: "home" | "away" }
     const [activePicker, setActivePicker] = useState<{ matchId: string; slot: "home" | "away" } | null>(null);
 
-    const knockoutMatches = matchesData.filter((m) => m.stage !== "group");
+    // Only round_of_32 needs manual assignment — later rounds are auto-populated from results
+    const knockoutMatches = matchesData.filter((m) => m.stage === "round_of_32");
 
     // Convert team.id (e.g. "mexico") → fifaCode lowercase (e.g. "mex") used in matchesData
     const teamIdToFifaCode = (teamId: string): string => {
@@ -241,6 +250,38 @@ export function AdminPanel({
                             <p className="mt-2 text-sm text-gray-600">
                                 Herramientas de mantenimiento de datos.
                             </p>
+
+                            {/* Joker earning start date */}
+                            <div className="mt-4">
+                                <p className="text-xs font-black text-gray-500 uppercase tracking-wide mb-1">
+                                    Fecha de inicio — jokers por racha
+                                </p>
+                                {party?.jokerEarningStartDate && (
+                                    <p className="text-xs text-gray-400 mb-2">
+                                        Actual: {new Date(party.jokerEarningStartDate).toLocaleDateString("es-PE", { day: "2-digit", month: "short", year: "numeric", timeZone: "America/Lima" })}
+                                    </p>
+                                )}
+                                <div className="flex gap-2">
+                                    <input
+                                        type="date"
+                                        value={jokerDateInput}
+                                        onChange={(e) => setJokerDateInput(e.target.value)}
+                                        className="flex-1 rounded-2xl bg-gray-100 dark:bg-gray-700 px-4 py-2.5 text-sm font-bold text-gray-900 dark:text-gray-100 outline-none"
+                                    />
+                                    <button
+                                        disabled={!jokerDateInput || jokerDateState === "saving"}
+                                        onClick={async () => {
+                                            setJokerDateState("saving");
+                                            await onSetJokerStartDate(new Date(jokerDateInput + "T00:00:00-05:00").toISOString());
+                                            setJokerDateState("saved");
+                                            setTimeout(() => setJokerDateState("idle"), 3000);
+                                        }}
+                                        className="rounded-2xl bg-gray-900 dark:bg-gray-100 dark:text-gray-900 px-4 py-2.5 text-sm font-black text-white disabled:opacity-50"
+                                    >
+                                        {jokerDateState === "saving" ? "..." : jokerDateState === "saved" ? "✓" : "Guardar"}
+                                    </button>
+                                </div>
+                            </div>
 
                             <button
                                 onClick={onBackfillAttendanceSummaries}

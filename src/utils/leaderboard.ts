@@ -4,6 +4,7 @@ import { SpecialPredictionsMap } from "@/lib/predictions";
 import { SpecialResults } from "@/lib/specialResults";
 import { MatchPredictionSummary } from "./predictionSummary";
 import { Match } from "@/types/Match";
+import { calculateEarnedJokers, JokerEarnedEntry } from "./jokerEarning";
 
 type MatchPredictionSummariesMap = {
     [matchId: string]: MatchPredictionSummary;
@@ -26,6 +27,9 @@ export type LeaderboardRow = {
     avgPoints: number;
     currentStreak: number;
     bestStreak: number;
+    jokersEarned: number;
+    jokersEarnedBreakdown: JokerEarnedEntry[];
+    jokersUsed: number;
 };
 
 function calculateStreaks(
@@ -82,7 +86,8 @@ export function calculateLeaderboard(
     matchPredictionSummaries: MatchPredictionSummariesMap,
     specialPredictions: SpecialPredictionsMap,
     specialResults: SpecialResults | null,
-    matches: Match[] = []
+    matches: Match[] = [],
+    jokerEarningStartDate: Date | null = null
 ): LeaderboardRow[] {
     const matchesByMatchId = Object.fromEntries(matches.map((m) => [m.id, m]));
 
@@ -94,6 +99,7 @@ export function calculateLeaderboard(
         let correctResults = 0;
         let failed = 0;
         let predictionsMade = 0;
+        let jokersUsed = 0;
 
         Object.values(matchPredictionSummaries).forEach((summary) => {
             const prediction = summary.predictions.find(
@@ -114,6 +120,8 @@ export function calculateLeaderboard(
                 else if (prediction.points > 0) correctResults++;
                 else failed++;
             }
+
+            if (prediction.jokerActivated) jokersUsed++;
         });
 
         const specialPoints = calculateSpecialPredictionPoints(
@@ -135,6 +143,8 @@ export function calculateLeaderboard(
             matchesByMatchId
         );
 
+        const { total: jokersEarned, breakdown: jokersEarnedBreakdown } = calculateEarnedJokers(user.uid, matchPredictionSummaries, matchesByMatchId, jokerEarningStartDate);
+
         return {
             userId: user.uid,
             name: user.name.split(" ")[0],
@@ -150,6 +160,9 @@ export function calculateLeaderboard(
             avgPoints,
             currentStreak,
             bestStreak,
+            jokersEarned,
+            jokersEarnedBreakdown,
+            jokersUsed,
         };
     });
 

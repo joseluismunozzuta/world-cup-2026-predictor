@@ -107,6 +107,44 @@ export function PlayerProfileModal({ row, rank, onClose }: Props) {
                     <StatCard label="Pronósticos" value={row.predictionsMade} />
                 </div>
 
+                {/* Jokers */}
+                <div className="mx-4 mt-3 rounded-2xl bg-white dark:bg-gray-800 p-4 shadow-sm">
+                    <p className="text-xs font-black uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-3">Jokers 🃏</p>
+                    <div className="flex justify-around">
+                        <div className="text-center">
+                            <p className="text-3xl font-black text-gray-950 dark:text-gray-50">{3 + row.jokersEarned - row.jokersUsed}</p>
+                            <p className="mt-1 text-xs font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-400">Disponibles</p>
+                        </div>
+                        <div className="w-px bg-gray-100 dark:bg-gray-700" />
+                        <div className="text-center">
+                            <p className="text-3xl font-black text-purple-600 dark:text-purple-400">{row.jokersUsed}</p>
+                            <p className="mt-1 text-xs font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-400">Usados</p>
+                        </div>
+                        <div className="w-px bg-gray-100 dark:bg-gray-700" />
+                        <div className="text-center">
+                            <p className="text-3xl font-black text-green-600 dark:text-green-400">+{row.jokersEarned}</p>
+                            <p className="mt-1 text-xs font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-400">Ganados</p>
+                        </div>
+                    </div>
+
+                    {row.jokersEarnedBreakdown.length > 0 && (
+                        <div className="mt-4 space-y-1.5 border-t border-gray-100 dark:border-gray-700 pt-3">
+                            {row.jokersEarnedBreakdown.map((entry, i) => (
+                                <div key={i} className="flex items-center gap-2">
+                                    <span className="text-sm">🃏</span>
+                                    <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                                        +1 por racha de{" "}
+                                        {entry.reason === "exact_streak"
+                                            ? <span className="font-black text-green-600 dark:text-green-400">{entry.streakCount} exactos</span>
+                                            : <span className="font-black text-blue-600 dark:text-blue-400">{entry.streakCount} aciertos</span>
+                                        }
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
                 {/* Rachas */}
                 <div className="mx-4 mt-3 rounded-2xl bg-white dark:bg-gray-800 p-4 shadow-sm">
                     <p className="text-xs font-black uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-3">Rachas</p>

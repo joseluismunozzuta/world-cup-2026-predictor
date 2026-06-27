@@ -20,7 +20,7 @@ import { savePredictionToFirebase, saveSpecialPredictionField, SpecialPrediction
 import { ResultsMap, saveResultToFirebase, subscribeToResults } from "@/lib/results";
 import { AppUser, subscribeToUsers } from "@/lib/users";
 import { clearAttendanceFromFirebase, AttendanceByMatchMap, saveAttendanceToFirebase, subscribeToMatchAttendance } from "@/lib/attendance";
-import { Party, promoteUserToAdmin, removeUserFromAdmin, subscribeToParty } from "@/lib/parties";
+import { Party, promoteUserToAdmin, removeUserFromAdmin, subscribeToParty, setJokerEarningStartDate } from "@/lib/parties";
 import { subscribeToWatchPartyMatches, WatchPartyMatchesMap } from "@/lib/partyMatches";
 import { AdminPanel } from "@/components/AdminPanel";
 import { formatPeruDate, getPeruDateKey } from "@/utils/format";
@@ -31,6 +31,7 @@ import { Button } from "@base-ui/react";
 import { backfillFinishedMatchPredictionSummaries, generateMatchPredictionSummary, MatchPredictionSummary, subscribeToMatchPredictionSummaries } from "@/utils/predictionSummary";
 import { AttendanceSummaryMap, backfillAttendanceSummaries, subscribeToAttendanceSummaries } from "@/utils/attendanceSummary";
 import { KnockoutTeamsMap, saveKnockoutTeamAssignment, subscribeToKnockoutTeams } from "@/lib/knockoutTeams";
+import { getKnockoutProgressions } from "@/utils/knockoutProgression";
 import { saveKnockoutWindowModification } from "@/lib/predictions";
 import { closeModificationWindow } from "@/lib/results";
 import { initMessaging } from "@/lib/messaging";
@@ -80,6 +81,11 @@ export default function Home() {
   }
 
   const [partyUsers, setPartyUsers] = useState<AppUser[]>([]);
+  const [partyLoaded, setPartyLoaded] = useState(false);
+  const [usersLoaded, setUsersLoaded] = useState(false);
+  const [resultsLoaded, setResultsLoaded] = useState(false);
+  const [summariesLoaded, setSummariesLoaded] = useState(false);
+  const [myPredictionsLoaded, setMyPredictionsLoaded] = useState(false);
   const [party, setParty] = useState<Party | null>(null);
   const [watchPartyMatches, setWatchPartyMatches] = useState<WatchPartyMatchesMap>({});
   const [isSavingWatchParty, setIsSavingWatchParty] = useState(false);
@@ -123,14 +129,20 @@ export default function Home() {
 
   useEffect(() => {
     if (!appUser?.activePartyId) return;
-    const usersSuscribe = subscribeToUsers(appUser?.activePartyId, setPartyUsers);
+    const usersSuscribe = subscribeToUsers(appUser?.activePartyId, (users) => {
+      setPartyUsers(users);
+      setUsersLoaded(true);
+    });
     return () => usersSuscribe();
   }, [appUser?.activePartyId]);
 
   useEffect(() => {
     if (!appUser?.activePartyId) return;
 
-    const unsubscribe = subscribeToParty(appUser.activePartyId, setParty);
+    const unsubscribe = subscribeToParty(appUser.activePartyId, (p) => {
+      setParty(p);
+      setPartyLoaded(true);
+    });
 
     return () => unsubscribe();
   }, [appUser?.activePartyId]);
@@ -141,7 +153,10 @@ export default function Home() {
     const unsubscribe = subscribeToMyPredictions(
       appUser.activePartyId,
       appUser.uid,
-      setMyPredictions
+      (predictions) => {
+        setMyPredictions(predictions);
+        setMyPredictionsLoaded(true);
+      }
     );
 
     return () => unsubscribe();
@@ -163,7 +178,10 @@ export default function Home() {
 
     const unsubscribe = subscribeToMatchPredictionSummaries(
       appUser.activePartyId,
-      setMatchPredictionSummaries
+      (summaries) => {
+        setMatchPredictionSummaries(summaries);
+        setSummariesLoaded(true);
+      }
     );
 
     return () => unsubscribe();
@@ -181,7 +199,10 @@ export default function Home() {
   }, [appUser?.activePartyId]);
 
   useEffect(() => {
-    const unsubscribe = subscribeToResults(setResults);
+    const unsubscribe = subscribeToResults((r) => {
+      setResults(r);
+      setResultsLoaded(true);
+    });
     return () => unsubscribe();
   }, []);
 
@@ -329,6 +350,22 @@ export default function Home() {
         result: finishedResult,
         partyUsers,
       });
+
+      // Auto-propagate winner/loser to subsequent knockout matches
+      const sourceMatch = matches.find((m) => m.id === matchId);
+      if (sourceMatch && result.qualifiedTeamId) {
+        const progressions = getKnockoutProgressions(sourceMatch, result.qualifiedTeamId);
+        await Promise.all(
+          progressions.map((p) =>
+            saveKnockoutTeamAssignment({
+              matchId: p.targetMatchId,
+              homeTeamId: p.slot === "home" ? p.teamId : undefined,
+              awayTeamId: p.slot === "away" ? p.teamId : undefined,
+              updatedBy: appUser.uid,
+            })
+          )
+        );
+      }
 
     } catch (error) {
       console.error("Error guardando resultado:", error);
@@ -482,6 +519,11 @@ export default function Home() {
     await backfillAttendanceSummaries({ partyId: appUser.activePartyId });
   };
 
+  const handleSetJokerStartDate = async (isoDate: string) => {
+    if (!appUser?.activePartyId) return;
+    await setJokerEarningStartDate(appUser.activePartyId, isoDate);
+  };
+
   const handleBackfillPredictionSummaries = async () => {
     if (!appUser?.activePartyId) return;
     await backfillFinishedMatchPredictionSummaries({
@@ -526,12 +568,17 @@ export default function Home() {
     });
   };
 
+  const jokerEarningStartDate = party?.jokerEarningStartDate
+    ? new Date(party.jokerEarningStartDate)
+    : null;
+
   const leaderboard = calculateLeaderboard(
     partyUsers,
     matchPredictionSummaries,
     specialPredictions,
     specialResults,
-    matches
+    matches,
+    jokerEarningStartDate
   );
 
   const mySpecialPrediction = appUser
@@ -590,6 +637,12 @@ export default function Home() {
 
   if (!appUser) {
     return <AuthView />;
+  }
+
+  const isDataReady = partyLoaded && usersLoaded && resultsLoaded && summariesLoaded && myPredictionsLoaded;
+
+  if (appUser.activePartyId && !isDataReady) {
+    return <LoadingScreen />;
   }
 
   const filteredMatches = matches.filter((match) => {
@@ -899,6 +952,7 @@ export default function Home() {
             onSaveSpecialResultField={handleSaveSpecialResultField}
             onBackfillAttendanceSummaries={handleBackfillAttendanceSummaries}
             onBackfillPredictionSummaries={handleBackfillPredictionSummaries}
+            onSetJokerStartDate={handleSetJokerStartDate}
             knockoutTeams={knockoutTeams}
             onSaveKnockoutTeams={handleSaveKnockoutTeams}
           />
@@ -927,6 +981,7 @@ export default function Home() {
         onSaveWindowModification={handleSaveWindowModification}
         onCloseModificationWindow={handleCloseModificationWindow}
         jokersUsed={Object.values(myPredictions).filter((p) => p.jokerActivated).length}
+        jokersEarned={leaderboard.find((r) => r.userId === appUser?.uid)?.jokersEarned ?? 0}
       />
     </main>
   );
