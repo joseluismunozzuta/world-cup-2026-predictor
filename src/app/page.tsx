@@ -17,7 +17,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { JoinPartyView } from "@/components/JoinPartyView";
 import { savePredictionToFirebase, saveSpecialPredictionField, SpecialPredictionsMap, StartedMatchPredictionsMap, subscribeToMyPredictions, subscribeToPartySpecialPredictions, subscribeToStartedMatchPredictions } from "@/lib/predictions";
-import { ResultsMap, saveResultToFirebase, subscribeToResults } from "@/lib/results";
+import { ResultsMap, saveResultToFirebase, saveKnockoutScore, saveKnockoutQualifier, subscribeToResults } from "@/lib/results";
 import { AppUser, subscribeToUsers } from "@/lib/users";
 import { clearAttendanceFromFirebase, AttendanceByMatchMap, saveAttendanceToFirebase, subscribeToMatchAttendance } from "@/lib/attendance";
 import { Party, promoteUserToAdmin, removeUserFromAdmin, subscribeToParty, setJokerEarningStartDate } from "@/lib/parties";
@@ -370,6 +370,74 @@ export default function Home() {
     } catch (error) {
       console.error("Error guardando resultado:", error);
       alert("Error al guardar el resultado. Revisa la consola.");
+    } finally {
+      setIsSavingResult(false);
+    }
+  };
+
+  // Step 1 for knockout draws: save score + open 10-min window
+  const handleSaveKnockoutScore = async (
+    matchId: string,
+    homeScore: number,
+    awayScore: number,
+  ) => {
+    if (!appUser || !isAdmin) return;
+    try {
+      setIsSavingResult(true);
+      await saveKnockoutScore({ matchId, homeScore, awayScore, updatedBy: appUser.uid });
+    } catch (error) {
+      console.error("Error guardando marcador:", error);
+      alert("Error al guardar el marcador. Revisa la consola.");
+    } finally {
+      setIsSavingResult(false);
+    }
+  };
+
+  // Step 2 for knockout draws: save qualifier after window closes
+  const handleSaveKnockoutQualifier = async (
+    matchId: string,
+    qualifiedTeamId: string,
+    wentToPenalties: boolean,
+  ) => {
+    if (!appUser || !isAdmin) return;
+    try {
+      setIsSavingResult(true);
+      await saveKnockoutQualifier({ matchId, qualifiedTeamId, wentToPenalties, updatedBy: appUser.uid });
+
+      const result = results[matchId];
+      if (!result) return;
+      const finishedResult = {
+        matchId,
+        homeScore: result.homeScore,
+        awayScore: result.awayScore,
+        status: "finished" as const,
+        qualifiedTeamId,
+        wentToPenalties,
+      };
+      await generateMatchPredictionSummary({
+        partyId: appUser.activePartyId!,
+        matchId,
+        result: finishedResult,
+        partyUsers,
+      });
+
+      const sourceMatch = matches.find((m) => m.id === matchId);
+      if (sourceMatch) {
+        const progressions = getKnockoutProgressions(sourceMatch, qualifiedTeamId);
+        await Promise.all(
+          progressions.map((p) =>
+            saveKnockoutTeamAssignment({
+              matchId: p.targetMatchId,
+              homeTeamId: p.slot === "home" ? p.teamId : undefined,
+              awayTeamId: p.slot === "away" ? p.teamId : undefined,
+              updatedBy: appUser.uid,
+            })
+          )
+        );
+      }
+    } catch (error) {
+      console.error("Error guardando clasificado:", error);
+      alert("Error al guardar el clasificado. Revisa la consola.");
     } finally {
       setIsSavingResult(false);
     }
@@ -980,6 +1048,8 @@ export default function Home() {
         onSavingWatchPartyChange={setIsSavingWatchParty}
         onSaveWindowModification={handleSaveWindowModification}
         onCloseModificationWindow={handleCloseModificationWindow}
+        onSaveKnockoutScore={handleSaveKnockoutScore}
+        onSaveKnockoutQualifier={handleSaveKnockoutQualifier}
         jokersUsed={Object.values(myPredictions).filter((p) => p.jokerActivated).length}
         jokersEarned={leaderboard.find((r) => r.userId === appUser?.uid)?.jokersEarned ?? 0}
       />

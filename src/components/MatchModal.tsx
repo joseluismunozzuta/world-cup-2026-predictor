@@ -3,7 +3,7 @@ import { Match } from "@/types/Match";
 import { formatDate, formatTime } from "@/utils/format";
 import { teamsByFifaCode, teamsById } from "@/data/Teams";
 import { Prediction } from "@/types/Prediction";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { calculatePredictionPoints } from "@/utils/scoring";
 import { MatchModalHeader } from "./MatchModalHeader";
 import { EditableAttendanceSelector } from "./EditableAttendanceSelector";
@@ -34,6 +34,8 @@ type Props = {
     }) => void;
     onSaveWindowModification: (matchId: string, qualifiedTeamId: string, penaltiesIfDraw: boolean) => void;
     onCloseModificationWindow: (matchId: string) => void;
+    onSaveKnockoutScore?: (matchId: string, homeScore: number, awayScore: number) => Promise<void>;
+    onSaveKnockoutQualifier?: (matchId: string, qualifiedTeamId: string, wentToPenalties: boolean) => Promise<void>;
     jokersUsed: number;
     jokersEarned: number;
     status: MatchStatus;
@@ -60,7 +62,8 @@ const finishedAttendanceOptions: AttendanceOption[] = [
 export function MatchModal({ match, onClose, attendanceStatus, onClearAttendance, onAttendanceChange,
     onSavePrediction, prediction, onSaveResult, resultMatch, status, attendees, notAttendees,
     appUser, isWatchParty, watchParty, members, onSavingWatchPartyChange,
-    onSaveWindowModification, onCloseModificationWindow, jokersUsed, jokersEarned }: Props) {
+    onSaveWindowModification, onCloseModificationWindow, onSaveKnockoutScore, onSaveKnockoutQualifier,
+    jokersUsed, jokersEarned }: Props) {
 
     const [isPredicting, setIsPredicting] = useState(false);
     const [isSavingResult, setIsSavingResult] = useState(false);
@@ -80,16 +83,28 @@ export function MatchModal({ match, onClose, attendanceStatus, onClearAttendance
     const [knockoutQualified, setKnockoutQualified] = useState<string>("");
     const [knockoutPenalties, setKnockoutPenalties] = useState<boolean>(false);
 
-    // Knockout result admin state
+    // Knockout result admin state (step 2: qualifier after window closes)
     const [resultQualified, setResultQualified] = useState<string>("");
     const [resultPenalties, setResultPenalties] = useState<boolean>(false);
-    const [resultWindowMinutes, setResultWindowMinutes] = useState<number>(15);
-    const [resultOpenWindow, setResultOpenWindow] = useState<boolean>(true);
 
     // Modification window state
     const [windowQualified, setWindowQualified] = useState<string>(prediction?.qualifiedTeamId ?? "");
     const [windowPenalties, setWindowPenalties] = useState<boolean>(prediction?.penaltiesIfDraw ?? false);
     const [isSavingWindow, setIsSavingWindow] = useState(false);
+
+    // Countdown: seconds remaining in modification window
+    const [windowSecondsLeft, setWindowSecondsLeft] = useState<number>(0);
+    useEffect(() => {
+        if (!resultMatch?.modificationWindowClosesAt || !resultMatch?.modificationWindowOpen) return;
+        const closesAt = new Date(resultMatch.modificationWindowClosesAt).getTime();
+        const update = () => {
+            const secs = Math.max(0, Math.round((closesAt - Date.now()) / 1000));
+            setWindowSecondsLeft(secs);
+        };
+        update();
+        const interval = setInterval(update, 1000);
+        return () => clearInterval(interval);
+    }, [resultMatch?.modificationWindowClosesAt, resultMatch?.modificationWindowOpen]);
 
     if (!match) return null;
 
@@ -106,8 +121,18 @@ export function MatchModal({ match, onClose, attendanceStatus, onClearAttendance
         ? new Date(resultMatch.modificationWindowClosesAt)
         : null;
     const windowIsOpen = resultMatch?.modificationWindowOpen === true &&
-        windowClosesAt !== null &&
-        windowClosesAt > new Date();
+        windowSecondsLeft > 0;
+
+    const formatCountdown = (secs: number) => {
+        const m = Math.floor(secs / 60);
+        const s = secs % 60;
+        return `${m}:${String(s).padStart(2, "0")}`;
+    };
+
+    // For knockout draws: score saved but qualifier not yet set (window phase or after)
+    const knockoutAwaitingQualifier = isKnockout && isFinished &&
+        resultMatch?.homeScore !== undefined &&
+        !resultMatch?.qualifiedTeamId;
 
     // Jokers: 3 max per World Cup. If current prediction already has joker, don't count it twice.
     const JOKERS_MAX = 3 + jokersEarned;
@@ -853,12 +878,15 @@ export function MatchModal({ match, onClose, attendanceStatus, onClearAttendance
                     {/* Modification window banner */}
                     {isFinished && windowIsOpen && isKnockout && homeTeam && awayTeam && (
                         <div className="mt-4 rounded-3xl bg-amber-50 border border-amber-200 p-5">
-                            <p className="text-base font-black text-amber-900">⏱ Tiempo Extra</p>
-                            <p className="mt-1 text-sm text-amber-700">
-                                El partido fue empate. Puedes modificar tus apuestas de penales y clasificado.
-                                {windowClosesAt && (
-                                    <span className="ml-1 font-bold">Cierra: {windowClosesAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
-                                )}
+                            <div className="flex items-center justify-between">
+                                <p className="text-base font-black text-amber-900">⏱ Tiempo Extra</p>
+                                <div className="flex flex-col items-end">
+                                    <span className="text-3xl font-black text-amber-700 tabular-nums leading-none">{formatCountdown(windowSecondsLeft)}</span>
+                                    <span className="text-xs font-semibold text-amber-500 uppercase tracking-wider">Tiempo restante</span>
+                                </div>
+                            </div>
+                            <p className="mt-2 text-sm text-amber-700">
+                                El partido terminó en empate. Puedes modificar tu pronóstico de clasificado y penales.
                             </p>
 
                             {prediction?.modifiedDuringWindow && (
@@ -938,8 +966,46 @@ export function MatchModal({ match, onClose, attendanceStatus, onClearAttendance
                     </>
                     }
 
-                    {!isFinished ? (
+                    {/* Admin: register qualifier after window closes (knockout draws only) */}
+                    {isAdmin && knockoutAwaitingQualifier && !windowIsOpen && homeTeam && awayTeam && (
+                        <div className="my-6 rounded-2xl bg-gray-50 dark:bg-gray-700 p-4">
+                            <p className="text-sm mb-1 font-black text-gray-900 dark:text-gray-100">Registrar clasificado</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">La ventana cerró. Registra quién clasificó.</p>
+                            <div className="space-y-4">
+                                <div>
+                                    <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">¿Quién clasificó?</p>
+                                    <div className="flex gap-2">
+                                        <button onClick={() => setResultQualified(match.homeTeamId ?? "")} className={`flex-1 rounded-xl py-2 text-sm font-bold border ${resultQualified === match.homeTeamId ? "bg-gray-900 text-white border-gray-900" : "bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-500"}`}>{homeTeam.name}</button>
+                                        <button onClick={() => setResultQualified(match.awayTeamId ?? "")} className={`flex-1 rounded-xl py-2 text-sm font-bold border ${resultQualified === match.awayTeamId ? "bg-gray-900 text-white border-gray-900" : "bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-500"}`}>{awayTeam.name}</button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">¿Hubo penales?</p>
+                                    <div className="flex gap-2">
+                                        <button onClick={() => setResultPenalties(false)} className={`flex-1 rounded-xl py-2 text-sm font-bold border ${!resultPenalties ? "bg-gray-900 text-white border-gray-900" : "bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-500"}`}>No</button>
+                                        <button onClick={() => setResultPenalties(true)} className={`flex-1 rounded-xl py-2 text-sm font-bold border ${resultPenalties ? "bg-gray-900 text-white border-gray-900" : "bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-500"}`}>Sí</button>
+                                    </div>
+                                </div>
+                                <button
+                                    disabled={!resultQualified || isSavingResult}
+                                    onClick={async () => {
+                                        if (!resultQualified) return;
+                                        const confirmed = window.confirm("¿Confirmas el clasificado? No se podrá cambiar.");
+                                        if (!confirmed) return;
+                                        setIsSavingResult(true);
+                                        await onSaveKnockoutQualifier?.(match.id, resultQualified, resultPenalties);
+                                        setIsSavingResult(false);
+                                    }}
+                                    className="w-full rounded-2xl bg-violet-600 hover:bg-violet-700 px-4 py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:bg-gray-300 dark:disabled:bg-gray-600"
+                                >
+                                    {isSavingResult ? "Guardando..." : "Confirmar clasificado"}
+                                </button>
+                            </div>
+                        </div>
+                    )}
 
+                    {/* Admin: register result for unfinished matches */}
+                    {!isFinished ? (
                         !isSavingResult ? (<>
                             <div className="my-6 rounded-2xl bg-gray-50 dark:bg-gray-700 p-5 shadow-lg">
                                 <div className="flex items-center justify-start">
@@ -975,52 +1041,22 @@ export function MatchModal({ match, onClose, attendanceStatus, onClearAttendance
                                     />
                                 )}
 
-                                {/* Knockout admin fields */}
-                                {isKnockout && realHomeScore !== "" && realAwayScore !== "" && homeTeam && awayTeam && (
-                                    <div className="mt-4 rounded-2xl bg-white dark:bg-gray-600 p-4 space-y-4 border border-gray-100 dark:border-gray-500">
-                                        <div>
-                                            <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">¿Quién clasificó?</p>
-                                            {Number(realHomeScore) === Number(realAwayScore) ? (
-                                                <div className="flex gap-2">
-                                                    <button onClick={() => setResultQualified(match.homeTeamId ?? "")} className={`flex-1 rounded-xl py-2 text-sm font-bold border ${resultQualified === match.homeTeamId ? "bg-gray-900 text-white border-gray-900" : "bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-500"}`}>{homeTeam.name}</button>
-                                                    <button onClick={() => setResultQualified(match.awayTeamId ?? "")} className={`flex-1 rounded-xl py-2 text-sm font-bold border ${resultQualified === match.awayTeamId ? "bg-gray-900 text-white border-gray-900" : "bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-500"}`}>{awayTeam.name}</button>
-                                                </div>
-                                            ) : (
-                                                <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">
-                                                    {Number(realHomeScore) > Number(realAwayScore) ? homeTeam.name : awayTeam.name}
-                                                    <span className="ml-2 text-xs text-gray-400 dark:text-gray-500">(automático)</span>
-                                                </p>
-                                            )}
-                                        </div>
+                                {/* Knockout non-draw: auto-qualify winner */}
+                                {isKnockout && realHomeScore !== "" && realAwayScore !== "" && homeTeam && awayTeam && Number(realHomeScore) !== Number(realAwayScore) && (
+                                    <div className="mt-3 rounded-2xl bg-white dark:bg-gray-600 px-4 py-3 border border-gray-100 dark:border-gray-500">
+                                        <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Clasifica</p>
+                                        <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+                                            {Number(realHomeScore) > Number(realAwayScore) ? homeTeam.name : awayTeam.name}
+                                            <span className="ml-2 text-xs text-gray-400 dark:text-gray-500">(automático)</span>
+                                        </p>
+                                    </div>
+                                )}
 
-                                        {Number(realHomeScore) === Number(realAwayScore) && (
-                                            <div>
-                                                <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">¿Hubo penales?</p>
-                                                <div className="flex gap-2">
-                                                    <button onClick={() => setResultPenalties(false)} className={`flex-1 rounded-xl py-2 text-sm font-bold border ${!resultPenalties ? "bg-gray-900 text-white border-gray-900" : "bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-500"}`}>No</button>
-                                                    <button onClick={() => setResultPenalties(true)} className={`flex-1 rounded-xl py-2 text-sm font-bold border ${resultPenalties ? "bg-gray-900 text-white border-gray-900" : "bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-500"}`}>Sí</button>
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {Number(realHomeScore) === Number(realAwayScore) && (
-                                            <div>
-                                                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Ventana de modificación</p>
-                                                <div className="flex gap-2 items-center">
-                                                    <button onClick={() => setResultOpenWindow(!resultOpenWindow)} className={`rounded-xl px-3 py-2 text-sm font-bold border ${resultOpenWindow ? "bg-amber-500 text-white border-amber-500" : "bg-white text-gray-700 border-gray-200"}`}>
-                                                        {resultOpenWindow ? "Activar ventana" : "No abrir ventana"}
-                                                    </button>
-                                                    {resultOpenWindow && (
-                                                        <select value={resultWindowMinutes} onChange={(e) => setResultWindowMinutes(Number(e.target.value))} className="rounded-xl border border-gray-200 px-3 py-2 text-sm font-bold">
-                                                            <option value={5}>5 min</option>
-                                                            <option value={10}>10 min</option>
-                                                            <option value={15}>15 min</option>
-                                                            <option value={20}>20 min</option>
-                                                        </select>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        )}
+                                {/* Knockout draw: just save score, window opens automatically */}
+                                {isKnockout && realHomeScore !== "" && realAwayScore !== "" && Number(realHomeScore) === Number(realAwayScore) && (
+                                    <div className="mt-3 rounded-2xl bg-amber-50 dark:bg-amber-900/20 px-4 py-3 border border-amber-200 dark:border-amber-700">
+                                        <p className="text-xs font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider">Empate — Tiempo extra</p>
+                                        <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">Se abrirá una ventana de 10 minutos para que los usuarios modifiquen su pronóstico. Luego registrarás quién clasificó.</p>
                                     </div>
                                 )}
 
@@ -1039,33 +1075,40 @@ export function MatchModal({ match, onClose, attendanceStatus, onClearAttendance
                                     </button>
 
                                     <button
-                                        disabled={!canSaveResult || (isKnockout && Number(realHomeScore) === Number(realAwayScore) && !resultQualified)}
-                                        onClick={() => {
-                                            const confirmed = window.confirm(
-                                                "¿Confirmas el resultado? Luego no podrás cambiarlo."
-                                            );
+                                        disabled={!canSaveResult}
+                                        onClick={async () => {
+                                            const confirmed = window.confirm("¿Confirmas el resultado? Luego no podrás cambiarlo.");
                                             if (!confirmed) return;
 
-                                            const isDraw = Number(realHomeScore) === Number(realAwayScore);
-                                            const impliedQualified = Number(realHomeScore) > Number(realAwayScore)
-                                                ? match.homeTeamId ?? ""
-                                                : match.awayTeamId ?? "";
+                                            const isDraw = isKnockout && Number(realHomeScore) === Number(realAwayScore);
 
-                                            onSaveResult(match.id, {
-                                                homeScore: Number(realHomeScore),
-                                                awayScore: Number(realAwayScore),
-                                                ...(isKnockout && {
-                                                    qualifiedTeamId: isDraw ? resultQualified : impliedQualified,
-                                                    wentToPenalties: isDraw ? resultPenalties : false,
-                                                    openModificationWindowMinutes: isDraw && resultOpenWindow ? resultWindowMinutes : 0,
-                                                }),
-                                            });
+                                            if (isDraw && onSaveKnockoutScore) {
+                                                // Step 1: save score only, auto-opens 10-min window
+                                                setIsSavingResult(true);
+                                                await onSaveKnockoutScore(match.id, Number(realHomeScore), Number(realAwayScore));
+                                                setIsSavingResult(false);
+                                            } else {
+                                                const impliedQualified = isKnockout
+                                                    ? (Number(realHomeScore) > Number(realAwayScore) ? match.homeTeamId ?? "" : match.awayTeamId ?? "")
+                                                    : undefined;
+
+                                                onSaveResult(match.id, {
+                                                    homeScore: Number(realHomeScore),
+                                                    awayScore: Number(realAwayScore),
+                                                    ...(isKnockout && {
+                                                        qualifiedTeamId: impliedQualified,
+                                                        wentToPenalties: false,
+                                                    }),
+                                                });
+                                            }
 
                                             setIsSavingResult(false);
                                         }}
                                         className="flex-1 rounded-2xl bg-violet-600 hover:bg-violet-700 px-4 py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:bg-gray-300 dark:disabled:bg-gray-600"
                                     >
-                                        Registrar resultado
+                                        {isKnockout && realHomeScore !== "" && realAwayScore !== "" && Number(realHomeScore) === Number(realAwayScore)
+                                            ? "Guardar y abrir ventana"
+                                            : "Registrar resultado"}
                                     </button>
                                 </div>
                             </div>) : null}
