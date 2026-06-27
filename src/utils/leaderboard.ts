@@ -105,9 +105,15 @@ export function calculateLeaderboard(
             predictionsMade++;
             matchPoints += prediction.points;
 
-            if (prediction.points >= 5) exactScores++;
-            else if (prediction.points > 0) correctResults++;
-            else failed++;
+            if (prediction.exactScore) exactScores++;
+            else if (prediction.correctResult) correctResults++;
+            else if (prediction.points === 0) failed++;
+            // Legacy summaries without exactScore/correctResult: fall back to points
+            else if (prediction.exactScore === undefined) {
+                if (prediction.points >= 5) exactScores++;
+                else if (prediction.points > 0) correctResults++;
+                else failed++;
+            }
         });
 
         const specialPoints = calculateSpecialPredictionPoints(

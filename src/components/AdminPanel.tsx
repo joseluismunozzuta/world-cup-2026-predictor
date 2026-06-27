@@ -23,6 +23,7 @@ type Props = {
         value: string
     ) => Promise<void>;
     onBackfillAttendanceSummaries: () => Promise<void>;
+    onBackfillPredictionSummaries: () => Promise<void>;
     knockoutTeams: KnockoutTeamsMap;
     onSaveKnockoutTeams: (matchId: string, slot: "home" | "away", teamId: string) => Promise<void>;
 };
@@ -50,12 +51,14 @@ export function AdminPanel({
     onDemoteUser,
     onSaveSpecialResultField,
     onBackfillAttendanceSummaries,
+    onBackfillPredictionSummaries,
     knockoutTeams,
     onSaveKnockoutTeams,
 }: Props) {
 
     const [pendingAction, setPendingAction] = useState<AdminAction>(null);
     const [activeAdminTab, setActiveAdminTab] = useState<AdminTab>("settings");
+    const [backfillState, setBackfillState] = useState<"idle" | "loading" | "done">("idle");
 
     // Knockout team assignment state: { [matchId]: { home, away } } — stores fifaCode (lowercase)
     const [knockoutDraft, setKnockoutDraft] = useState<Record<string, { home: string; away: string }>>({});
@@ -230,7 +233,7 @@ export function AdminPanel({
                             </div>
                         </div>
 
-                        {/*<div className="rounded-3xl bg-white p-5 shadow-sm">
+                        <div className="rounded-3xl bg-white p-5 shadow-sm">
                             <h3 className="text-lg font-black text-gray-950">
                                 🛠️ Utilidades
                             </h3>
@@ -245,7 +248,24 @@ export function AdminPanel({
                             >
                                 Regenerar resúmenes de asistencia
                             </button>
-                        </div>*/}
+
+                            <button
+                                disabled={backfillState === "loading"}
+                                onClick={async () => {
+                                    setBackfillState("loading");
+                                    await onBackfillPredictionSummaries();
+                                    setBackfillState("done");
+                                    setTimeout(() => setBackfillState("idle"), 4000);
+                                }}
+                                className="mt-3 w-full rounded-2xl bg-gray-900 py-3 text-sm font-black text-white disabled:opacity-50"
+                            >
+                                {backfillState === "loading"
+                                    ? "Regenerando..."
+                                    : backfillState === "done"
+                                    ? "✓ Resúmenes actualizados"
+                                    : "Regenerar resúmenes de pronósticos"}
+                            </button>
+                        </div>
 
                         {pendingAction && (
                             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-5">

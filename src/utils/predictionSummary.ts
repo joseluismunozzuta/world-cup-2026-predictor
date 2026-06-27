@@ -27,6 +27,8 @@ export type MatchPredictionSummary = {
         homeScore: number;
         awayScore: number;
         points: number;
+        exactScore?: boolean;
+        correctResult?: boolean;
         jokerActivated?: boolean;
         qualifiedTeamId?: string;
         penaltiesIfDraw?: boolean;
@@ -73,13 +75,16 @@ export async function generateMatchPredictionSummary({
         const prediction = docSnap.data() as StoredPrediction;
         const user = usersById[prediction.userId];
 
+        const scoreResult = calculatePredictionPoints(prediction, result);
         const base = {
             userId: prediction.userId,
             userName: user?.name ?? "Usuario",
             photoURL: user?.photoURL ?? "",
             homeScore: prediction.homeScore,
             awayScore: prediction.awayScore,
-            points: calculatePredictionPoints(prediction, result).points,
+            points: scoreResult.points,
+            exactScore: scoreResult.exactScore,
+            correctResult: scoreResult.correctResult,
             jokerActivated: prediction.jokerActivated ?? false,
         };
         return Object.fromEntries(

@@ -482,6 +482,15 @@ export default function Home() {
     await backfillAttendanceSummaries({ partyId: appUser.activePartyId });
   };
 
+  const handleBackfillPredictionSummaries = async () => {
+    if (!appUser?.activePartyId) return;
+    await backfillFinishedMatchPredictionSummaries({
+      partyId: appUser.activePartyId,
+      results,
+      partyUsers,
+    });
+  };
+
   const handleSaveKnockoutTeams = async (matchId: string, slot: "home" | "away", teamId: string) => {
     if (!appUser?.uid || !isAdmin) return;
     setIsSavingAdmin(true);
@@ -889,6 +898,7 @@ export default function Home() {
             onDemoteUser={handleDemoteUser}
             onSaveSpecialResultField={handleSaveSpecialResultField}
             onBackfillAttendanceSummaries={handleBackfillAttendanceSummaries}
+            onBackfillPredictionSummaries={handleBackfillPredictionSummaries}
             knockoutTeams={knockoutTeams}
             onSaveKnockoutTeams={handleSaveKnockoutTeams}
           />
