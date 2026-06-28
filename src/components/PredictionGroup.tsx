@@ -209,6 +209,26 @@ export function PredictionGroup({
                             </div>
                         </div>
 
+                        {(() => {
+                            const isKnockout = match.stage !== "group";
+                            const qualifiedTeamId = "qualifiedTeamId" in prediction ? (prediction as { qualifiedTeamId?: string }).qualifiedTeamId : undefined;
+                            const penaltiesIfDraw = "penaltiesIfDraw" in prediction ? (prediction as { penaltiesIfDraw?: boolean }).penaltiesIfDraw : undefined;
+                            const qualifiedTeam = qualifiedTeamId ? teamsByFifaCode[qualifiedTeamId] : null;
+                            if (!isKnockout || !qualifiedTeam) return null;
+                            const isDraw = prediction.homeScore === prediction.awayScore;
+                            const method = isDraw
+                                ? (penaltiesIfDraw ? "en penales" : "en el tiempo extra")
+                                : "en los 90'";
+                            return (
+                                <div className="flex items-center justify-center gap-1.5 mt-1 text-[10px] text-gray-500 dark:text-gray-400 font-medium">
+                                    <span>Clasifica</span>
+                                    <CountryFlag homeTeam={qualifiedTeam} className="h-3.5 w-auto rounded-[2px] shrink-0 object-cover" />
+                                    <span className="font-bold text-gray-700 dark:text-gray-200">{qualifiedTeam.nameEs}</span>
+                                    <span>{method}</span>
+                                </div>
+                            );
+                        })()}
+
                         {"jokerActivated" in prediction && (prediction as { jokerActivated?: boolean }).jokerActivated && (
                             <div className="flex justify-center mt-1 mb-1">
                                 <span className="inline-flex items-center gap-1.5 rounded-full bg-purple-100 px-3 py-1 text-[10px] font-black text-purple-700">
@@ -398,7 +418,7 @@ export function PredictionGroup({
                                                                             <div className="flex items-center gap-1.5 pl-8 text-[10px] text-gray-500 dark:text-gray-400 font-medium">
                                                                                 <span>Clasifica</span>
                                                                                 <CountryFlag homeTeam={qualifiedTeam} className="h-3.5 w-auto rounded-[2px] shrink-0 object-cover" />
-                                                                                <span className="font-bold text-gray-700 dark:text-gray-200">{qualifiedTeam.name}</span>
+                                                                                <span className="font-bold text-gray-700 dark:text-gray-200">{qualifiedTeam.nameEs}</span>
                                                                                 <span className="text-gray-400 dark:text-gray-500">{method}</span>
                                                                             </div>
                                                                         );

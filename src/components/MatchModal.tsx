@@ -599,7 +599,7 @@ export function MatchModal({ match, onClose, attendanceStatus, onClearAttendance
                                             />
                                             {isKnockout && resultMatch?.qualifiedTeamId && (
                                                 <p className="mt-1 text-center text-xs text-gray-500 dark:text-gray-400">
-                                                    Clasificó: <span className="font-bold">{teamsByFifaCode[resultMatch.qualifiedTeamId]?.name}</span>
+                                                    Clasificó: <span className="font-bold">{teamsByFifaCode[resultMatch.qualifiedTeamId]?.nameEs}</span>
                                                     {resultMatch.wentToPenalties && <span className="ml-1">· Con penales</span>}
                                                 </p>
                                             )}
@@ -740,7 +740,7 @@ export function MatchModal({ match, onClose, attendanceStatus, onClearAttendance
                                                                     ? "bg-cyan-600 text-white border-cyan-600 shadow-md shadow-cyan-200 dark:shadow-cyan-900"
                                                                     : "bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-cyan-200 dark:border-cyan-700/50"}`}
                                                             >
-                                                                {homeTeam.name}
+                                                                {homeTeam.nameEs}
                                                             </button>
                                                             <button
                                                                 onClick={() => setKnockoutQualified(match.awayTeamId ?? "")}
@@ -748,13 +748,13 @@ export function MatchModal({ match, onClose, attendanceStatus, onClearAttendance
                                                                     ? "bg-cyan-600 text-white border-cyan-600 shadow-md shadow-cyan-200 dark:shadow-cyan-900"
                                                                     : "bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-cyan-200 dark:border-cyan-700/50"}`}
                                                             >
-                                                                {awayTeam.name}
+                                                                {awayTeam.nameEs}
                                                             </button>
                                                         </div>
                                                     ) : (
                                                         <div className="flex items-center gap-2 rounded-xl bg-cyan-600 px-4 py-2.5">
                                                             <span className="text-white text-sm font-black flex-1">
-                                                                {knockoutQualified === match.homeTeamId ? homeTeam.name : knockoutQualified === match.awayTeamId ? awayTeam.name : "—"}
+                                                                {knockoutQualified === match.homeTeamId ? homeTeam.nameEs : knockoutQualified === match.awayTeamId ? awayTeam.nameEs : "—"}
                                                             </span>
                                                             <span className="text-cyan-200 text-xs font-medium">según tu marcador</span>
                                                         </div>
@@ -791,7 +791,7 @@ export function MatchModal({ match, onClose, attendanceStatus, onClearAttendance
                                                     <div className="rounded-xl bg-white dark:bg-gray-700/60 px-4 py-2.5 flex items-center justify-between gap-2">
                                                         <span className="text-xs text-gray-500 dark:text-gray-400 font-semibold">Tu predicción</span>
                                                         <span className="text-sm font-black text-cyan-700 dark:text-cyan-300">
-                                                            Clasifica {knockoutQualified === match.homeTeamId ? homeTeam.name : awayTeam.name}
+                                                            Clasifica {knockoutQualified === match.homeTeamId ? homeTeam.nameEs : awayTeam.nameEs}
                                                             {predictedDraw && <span className="ml-1 font-medium text-gray-500 dark:text-gray-400">· {knockoutPenalties ? "en penales" : "tiempo extra"}</span>}
                                                         </span>
                                                     </div>
@@ -875,8 +875,8 @@ export function MatchModal({ match, onClose, attendanceStatus, onClearAttendance
                             )}
                     </div>
 
-                    {/* Modification window banner */}
-                    {isFinished && windowIsOpen && isKnockout && homeTeam && awayTeam && (
+                    {/* Modification window banner — only for users who already predicted */}
+                    {isFinished && windowIsOpen && isKnockout && homeTeam && awayTeam && prediction && (
                         <div className="mt-4 rounded-3xl bg-amber-50 border border-amber-200 p-5">
                             <div className="flex items-center justify-between">
                                 <p className="text-base font-black text-amber-900">⏱ Tiempo Extra</p>
@@ -901,13 +901,13 @@ export function MatchModal({ match, onClose, attendanceStatus, onClearAttendance
                                             onClick={() => setWindowQualified(match.homeTeamId ?? "")}
                                             className={`flex-1 rounded-xl py-2 text-sm font-bold border ${windowQualified === match.homeTeamId ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-700 border-gray-200"}`}
                                         >
-                                            {homeTeam.name}
+                                            {homeTeam.nameEs}
                                         </button>
                                         <button
                                             onClick={() => setWindowQualified(match.awayTeamId ?? "")}
                                             className={`flex-1 rounded-xl py-2 text-sm font-bold border ${windowQualified === match.awayTeamId ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-700 border-gray-200"}`}
                                         >
-                                            {awayTeam.name}
+                                            {awayTeam.nameEs}
                                         </button>
                                     </div>
                                 </div>
@@ -975,8 +975,8 @@ export function MatchModal({ match, onClose, attendanceStatus, onClearAttendance
                                 <div>
                                     <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">¿Quién clasificó?</p>
                                     <div className="flex gap-2">
-                                        <button onClick={() => setResultQualified(match.homeTeamId ?? "")} className={`flex-1 rounded-xl py-2 text-sm font-bold border ${resultQualified === match.homeTeamId ? "bg-gray-900 text-white border-gray-900" : "bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-500"}`}>{homeTeam.name}</button>
-                                        <button onClick={() => setResultQualified(match.awayTeamId ?? "")} className={`flex-1 rounded-xl py-2 text-sm font-bold border ${resultQualified === match.awayTeamId ? "bg-gray-900 text-white border-gray-900" : "bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-500"}`}>{awayTeam.name}</button>
+                                        <button onClick={() => setResultQualified(match.homeTeamId ?? "")} className={`flex-1 rounded-xl py-2 text-sm font-bold border ${resultQualified === match.homeTeamId ? "bg-gray-900 text-white border-gray-900" : "bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-500"}`}>{homeTeam.nameEs}</button>
+                                        <button onClick={() => setResultQualified(match.awayTeamId ?? "")} className={`flex-1 rounded-xl py-2 text-sm font-bold border ${resultQualified === match.awayTeamId ? "bg-gray-900 text-white border-gray-900" : "bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-500"}`}>{awayTeam.nameEs}</button>
                                     </div>
                                 </div>
                                 <div>
@@ -1046,7 +1046,7 @@ export function MatchModal({ match, onClose, attendanceStatus, onClearAttendance
                                     <div className="mt-3 rounded-2xl bg-white dark:bg-gray-600 px-4 py-3 border border-gray-100 dark:border-gray-500">
                                         <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Clasifica</p>
                                         <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">
-                                            {Number(realHomeScore) > Number(realAwayScore) ? homeTeam.name : awayTeam.name}
+                                            {Number(realHomeScore) > Number(realAwayScore) ? homeTeam.nameEs : awayTeam.nameEs}
                                             <span className="ml-2 text-xs text-gray-400 dark:text-gray-500">(automático)</span>
                                         </p>
                                     </div>
