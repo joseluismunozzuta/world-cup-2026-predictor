@@ -11,6 +11,7 @@ import { ResultsMap } from "@/lib/results";
 import { AppUser } from "@/lib/users";
 import { Match } from "@/types/Match";
 import { ScoreResultSection } from "./ScoreResultSection";
+import { CountryFlag } from "./CountryFlag";
 import { useRef, useState } from "react";
 import { getMatchStatus } from "@/utils/matchstatus";
 import { MatchPredictionSummary } from "@/utils/predictionSummary";
@@ -389,18 +390,19 @@ export function PredictionGroup({
                                                                         )}
                                                                     </div>
 
-                                                                    {isKnockout && qualifiedTeam && (
-                                                                        <div className="flex items-center gap-2 pl-8 text-[10px] text-gray-500 dark:text-gray-400 font-medium">
-                                                                            <span>Clasifica:</span>
-                                                                            <span className="font-bold text-gray-700 dark:text-gray-200">{qualifiedTeam.name}</span>
-                                                                            {isDraw && penaltiesIfDraw !== undefined && (
-                                                                                <>
-                                                                                    <span className="text-gray-300">·</span>
-                                                                                    <span>Penales: <span className="font-bold text-gray-700">{penaltiesIfDraw ? "Sí" : "No"}</span></span>
-                                                                                </>
-                                                                            )}
-                                                                        </div>
-                                                                    )}
+                                                                    {isKnockout && qualifiedTeam && (() => {
+                                                                        const method = isDraw
+                                                                            ? (penaltiesIfDraw ? "en penales" : "en el tiempo extra")
+                                                                            : "en los 90'";
+                                                                        return (
+                                                                            <div className="flex items-center gap-1.5 pl-8 text-[10px] text-gray-500 dark:text-gray-400 font-medium">
+                                                                                <span>Clasifica</span>
+                                                                                <CountryFlag homeTeam={qualifiedTeam} className="h-3.5 w-auto rounded-[2px] shrink-0 object-cover" />
+                                                                                <span className="font-bold text-gray-700 dark:text-gray-200">{qualifiedTeam.name}</span>
+                                                                                <span className="text-gray-400 dark:text-gray-500">{method}</span>
+                                                                            </div>
+                                                                        );
+                                                                    })()}
                                                                 </div>
                                                             );
                                                         })}
