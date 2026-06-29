@@ -173,11 +173,16 @@ export function PredictionGroup({
                     >
                         <div className="my-1 flex items-center justify-between gap-3">
 
-                            {result?.status !== "finished" &&
-                                <p className="text-xs font-bold text-gray-400 dark:text-gray-500">
-                                    {formatMatchDate(match.kickoff)}
-                                </p>
-                            }
+                            <div className="flex items-center gap-2 min-w-0">
+                                <span className="shrink-0 rounded-full bg-gray-200 dark:bg-gray-700 px-2 py-0.5 text-[9px] font-black text-gray-500 dark:text-gray-400">
+                                    #{match.matchNumber}
+                                </span>
+                                {result?.status !== "finished" &&
+                                    <p className="text-xs font-bold text-gray-400 dark:text-gray-500 truncate">
+                                        {formatMatchDate(match.kickoff)}
+                                    </p>
+                                }
+                            </div>
 
                             {points !== null && (
                                 <span

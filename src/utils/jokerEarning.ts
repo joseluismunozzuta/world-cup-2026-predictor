@@ -21,7 +21,7 @@ export function calculateEarnedJokers(
 
     const startTime = jokerEarningStartDate.getTime();
 
-    const entries: { kickoff: number; exactScore: boolean; correctResult: boolean }[] = [];
+    const entries: { kickoff: number; matchNumber: number; exactScore: boolean; correctResult: boolean }[] = [];
 
     Object.values(matchPredictionSummaries).forEach((summary) => {
         const prediction = summary.predictions.find((p) => p.userId === userId);
@@ -35,12 +35,13 @@ export function calculateEarnedJokers(
 
         entries.push({
             kickoff,
+            matchNumber: match.matchNumber,
             exactScore: prediction.exactScore ?? false,
             correctResult: prediction.correctResult ?? false,
         });
     });
 
-    entries.sort((a, b) => a.kickoff - b.kickoff);
+    entries.sort((a, b) => a.kickoff - b.kickoff || a.matchNumber - b.matchNumber);
 
     const breakdown: JokerEarnedEntry[] = [];
     let exactStreak = 0;

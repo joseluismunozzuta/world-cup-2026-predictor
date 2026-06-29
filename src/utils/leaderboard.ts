@@ -38,7 +38,7 @@ function calculateStreaks(
     matchesByMatchId: Record<string, Match>
 ): { currentStreak: number; bestStreak: number } {
     // Collect all predictions for this user that have a finished result
-    const userPredictions: { kickoff: number; points: number }[] = [];
+    const userPredictions: { kickoff: number; matchNumber: number; points: number }[] = [];
 
     Object.values(matchPredictionSummaries).forEach((summary) => {
         const prediction = summary.predictions.find((p) => p.userId === userId);
@@ -49,12 +49,13 @@ function calculateStreaks(
 
         userPredictions.push({
             kickoff: new Date(match.kickoff).getTime(),
+            matchNumber: match.matchNumber,
             points: prediction.points,
         });
     });
 
-    // Sort chronologically
-    userPredictions.sort((a, b) => a.kickoff - b.kickoff);
+    // Sort chronologically, tiebreak by matchNumber for simultaneous matches
+    userPredictions.sort((a, b) => a.kickoff - b.kickoff || a.matchNumber - b.matchNumber);
 
     let bestStreak = 0;
     let currentStreak = 0;

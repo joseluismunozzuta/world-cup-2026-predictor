@@ -48,10 +48,10 @@ export function MyPredictionsTab({
 
     const predictedMatches = matches
         .filter((match) => myPredictions[match.id])
-        .sort(
-            (a, b) =>
-                new Date(b.kickoff).getTime() - new Date(a.kickoff).getTime()
-        );
+        .sort((a, b) => {
+            const kickoffDiff = new Date(b.kickoff).getTime() - new Date(a.kickoff).getTime();
+            return kickoffDiff !== 0 ? kickoffDiff : b.matchNumber - a.matchNumber;
+        });
 
     const pendingPredictions = predictedMatches.filter(
         (match) => results[match.id]?.status !== "finished"
