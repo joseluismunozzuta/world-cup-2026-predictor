@@ -17,6 +17,10 @@ export function getMatchStatus(
     }
 
     if (result?.status === "finished") {
+        // Knockout matches awaiting qualifier are still in progress
+        if (match.stage !== "group" && !result.qualifiedTeamId) {
+            return "live";
+        }
         return "finished";
     }
 
