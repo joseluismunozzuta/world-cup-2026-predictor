@@ -225,7 +225,7 @@ export function PredictionGroup({
                                 ? (penaltiesIfDraw ? "en penales" : "en el tiempo extra")
                                 : "en los 90'";
                             return (
-                                <div className="flex items-center justify-center gap-1.5 mt-1 text-[10px] text-gray-500 dark:text-gray-400 font-medium">
+                                <div className="flex items-center justify-center gap-1.5 mt-0.5 text-[10px] text-gray-500 dark:text-gray-400 font-medium w-full">
                                     <span>Clasifica</span>
                                     <CountryFlag homeTeam={qualifiedTeam} className="h-3.5 w-auto rounded-[2px] shrink-0 object-cover" />
                                     <span className="font-bold text-gray-700 dark:text-gray-200">{qualifiedTeam.nameEs}</span>
@@ -243,19 +243,36 @@ export function PredictionGroup({
                         )}
 
                         {result?.status === "finished" && (
-                            <div className="flex flex-row items-center justify-between">
-                                <p className="text-center w-20 shrink-0 text-[11px] font-semibold capitalize leading-tight tracking-wide text-gray-900 dark:text-gray-100">
-                                    Resultado
-                                </p>
-                                <div className="w-full">
-                                    <ScoreResultSection
-                                        homeTeam={homeTeam}
-                                        awayTeam={awayTeam}
-                                        result={result}
-                                    />
+                            <>
+                                <div className="flex flex-row items-center justify-between">
+                                    <p className="text-center w-20 shrink-0 text-[11px] font-semibold capitalize leading-tight tracking-wide text-gray-900 dark:text-gray-100">
+                                        Resultado
+                                    </p>
+                                    <div className="w-full">
+                                        <ScoreResultSection
+                                            homeTeam={homeTeam}
+                                            awayTeam={awayTeam}
+                                            result={result}
+                                        />
+                                    </div>
                                 </div>
-
-                            </div>
+                                {match.stage !== "group" && result.qualifiedTeamId && (() => {
+                                    const qualTeam = teamsByFifaCode[result.qualifiedTeamId];
+                                    if (!qualTeam) return null;
+                                    const resultWasDraw = result.homeScore === result.awayScore;
+                                    const method = resultWasDraw
+                                        ? (result.wentToPenalties ? "en penales" : "en el tiempo extra")
+                                        : "en los 90'";
+                                    return (
+                                        <div className="flex items-center justify-center gap-1.5 mt-0.5 text-[10px] text-gray-500 dark:text-gray-400 font-medium w-full">
+                                            <span>Clasificó</span>
+                                            <CountryFlag homeTeam={qualTeam} className="h-3.5 w-auto rounded-[2px] shrink-0 object-cover" />
+                                            <span className="font-bold text-gray-700 dark:text-gray-200">{qualTeam.nameEs}</span>
+                                            <span>{method}</span>
+                                        </div>
+                                    );
+                                })()}
+                            </>
                         )}
 
                         {matchStarted && (
