@@ -43,21 +43,17 @@ export function calculatePredictionPoints(
         if (prediction.qualifiedTeamId === result.qualifiedTeamId) qualifierPoints = 5;
     }
 
-    // Penalties points (+5): awarded for correctly predicting how the match was decided
+    // Penalties points (+5): independent bet — did penalties happen or not?
+    // No penalties = match decided in 90 min OR extra time. Penalties = shootout.
     let penaltiesPoints = 0;
     const resultWasDraw = result.homeScore === result.awayScore;
     const predictedDraw = prediction.homeScore === prediction.awayScore;
 
-    if (resultWasDraw && result.wentToPenalties !== undefined) {
-        // Real draw: user must have engaged (predicted draw or modified during window)
-        const userEngaged = predictedDraw || prediction.penaltiesIfDraw !== undefined;
-        if (userEngaged) {
-            const predictedPenalties = prediction.penaltiesIfDraw ?? false;
-            if (predictedPenalties === result.wentToPenalties) penaltiesPoints = 5;
-        }
-    } else if (!resultWasDraw && !predictedDraw) {
-        // Real direct win and user predicted a direct win → correctly predicted no extra time
-        penaltiesPoints = 5;
+    if (result.wentToPenalties !== undefined) {
+        const resultHadPenalties = result.wentToPenalties === true;
+        // User predicted penalties only if they explicitly predicted a draw + penalties
+        const userPredictedPenalties = predictedDraw && prediction.penaltiesIfDraw === true;
+        if (resultHadPenalties === userPredictedPenalties) penaltiesPoints = 5;
     }
 
     // Conviction bonus (+10): predicted draw + didn't modify + all 3 correct
