@@ -53,13 +53,15 @@ export function MyPredictionsTab({
             return kickoffDiff !== 0 ? kickoffDiff : b.matchNumber - a.matchNumber;
         });
 
-    const pendingPredictions = predictedMatches.filter(
-        (match) => results[match.id]?.status !== "finished"
-    );
+    const isMatchFullyFinished = (match: Match) => {
+        const result = results[match.id];
+        if (result?.status !== "finished") return false;
+        if (match.stage !== "group" && !result.qualifiedTeamId) return false;
+        return true;
+    };
 
-    const finishedPredictions = predictedMatches.filter(
-        (match) => results[match.id]?.status === "finished"
-    );
+    const pendingPredictions = predictedMatches.filter((match) => !isMatchFullyFinished(match));
+    const finishedPredictions = predictedMatches.filter((match) => isMatchFullyFinished(match));
 
     const totalPoints = finishedPredictions.reduce((total, match) => {
         const prediction = myPredictions[match.id];

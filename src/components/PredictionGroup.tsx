@@ -289,9 +289,12 @@ export function PredictionGroup({
                                         <div>
                                             {(() => {
                                                 const isFinished = result?.status === "finished";
+                                                const summaryPredictions = matchPredictionSummaries[match.id]?.predictions ?? [];
 
-                                                const predictionsToShow = isFinished
-                                                    ? matchPredictionSummaries[match.id]?.predictions ?? []
+                                                // If finished but summary not yet generated (knockout awaiting qualifier),
+                                                // fall back to startedMatchPredictions so users can see predictions during window
+                                                const predictionsToShow = isFinished && summaryPredictions.length > 0
+                                                    ? summaryPredictions
                                                     : startedMatchPredictions[match.id] ?? [];
 
                                                 if (predictionsToShow.length === 0) {
@@ -353,7 +356,9 @@ export function PredictionGroup({
                                                             const qualifiedTeamId = "qualifiedTeamId" in userPrediction ? userPrediction.qualifiedTeamId : undefined;
                                                             const penaltiesIfDraw = "penaltiesIfDraw" in userPrediction ? userPrediction.penaltiesIfDraw : undefined;
                                                             const qualifiedTeam = qualifiedTeamId ? teamsByFifaCode[qualifiedTeamId] : null;
-                                                            const isDraw = userPrediction.homeScore === userPrediction.awayScore;
+                                                            // Use real result draw status if available (window modifications only update qualifiedTeamId/penaltiesIfDraw, not scores)
+                                                            const resultWasDraw = result && result.homeScore !== undefined ? result.homeScore === result.awayScore : null;
+                                                            const isDraw = resultWasDraw !== null ? resultWasDraw : userPrediction.homeScore === userPrediction.awayScore;
 
                                                             const isMyRow = isFinished && currentUserId && user.uid === currentUserId && homeTeam && awayTeam && result;
 

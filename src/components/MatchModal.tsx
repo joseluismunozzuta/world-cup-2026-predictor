@@ -140,7 +140,8 @@ export function MatchModal({ match, onClose, attendanceStatus, onClearAttendance
     const jokersRemaining = JOKERS_MAX - jokersUsedExcludingThis;
     const canActivateJoker = jokerActive || jokersRemaining > 0;
 
-    const canPredict = status === "scheduled";
+    const isAdmin = appUser.role === "admin";
+    const canPredict = status === "scheduled" || isAdmin;
 
     const predictedDraw = homeScore !== "" && awayScore !== "" && Number(homeScore) === Number(awayScore);
     const knockoutFieldsValid = !isKnockout || (
@@ -161,8 +162,6 @@ export function MatchModal({ match, onClose, attendanceStatus, onClearAttendance
         realAwayScore !== "" &&
         Number(realHomeScore) >= 0 &&
         Number(realAwayScore) >= 0;
-
-    const isAdmin = appUser.role === "admin";
     const activePartyId = appUser.activePartyId;
     const selectedHost = members.find(
         (member) => member.uid === selectedHostUserId

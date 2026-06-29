@@ -530,7 +530,11 @@ export default function Home() {
       .filter((match) => {
         const result = results[match.id];
 
-        if (result?.status === "finished") return false;
+        if (result?.status === "finished") {
+          // Knockout matches awaiting qualifier are still "in progress"
+          if (match.stage !== "group" && !result.qualifiedTeamId) return true;
+          return false;
+        }
 
         return now >= new Date(match.kickoff).getTime();
       })
