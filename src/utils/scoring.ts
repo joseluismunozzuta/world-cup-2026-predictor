@@ -51,8 +51,9 @@ export function calculatePredictionPoints(
 
     if (result.wentToPenalties !== undefined) {
         const resultHadPenalties = result.wentToPenalties === true;
-        // User predicted penalties only if they explicitly predicted a draw + penalties
-        const userPredictedPenalties = predictedDraw && prediction.penaltiesIfDraw === true;
+        // penaltiesIfDraw is an explicit standalone bet regardless of original score:
+        // true = user bet on penalties, false/undefined = user bet on no penalties
+        const userPredictedPenalties = prediction.penaltiesIfDraw === true;
         if (resultHadPenalties === userPredictedPenalties) penaltiesPoints = 5;
     }
 

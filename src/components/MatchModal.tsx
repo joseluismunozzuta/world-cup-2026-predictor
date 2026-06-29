@@ -655,11 +655,15 @@ export function MatchModal({ match, onClose, attendanceStatus, onClearAttendance
                                             {isKnockout && prediction.qualifiedTeamId && (() => {
                                                 const qualTeam = teamsByFifaCode[prediction.qualifiedTeamId];
                                                 const resultWasDraw = resultMatch?.homeScore === resultMatch?.awayScore;
+                                                // Always show method when result was draw; undefined penaltiesIfDraw = no penales = tiempo extra
+                                                const method = resultWasDraw
+                                                    ? (prediction.penaltiesIfDraw ? "En penales" : "Tiempo extra")
+                                                    : "en los 90'";
                                                 return (
                                                     <p className="mt-1 text-center text-xs text-gray-500 dark:text-gray-400">
                                                         Clasifica: <span className="font-bold">{qualTeam?.nameEs}</span>
-                                                        {resultWasDraw && prediction.penaltiesIfDraw !== undefined && (
-                                                            <span className="ml-1">· {prediction.penaltiesIfDraw ? "En penales" : "Tiempo extra"}</span>
+                                                        {resultWasDraw && (
+                                                            <span className="ml-1">· {method}</span>
                                                         )}
                                                         {prediction.modifiedDuringWindow && (
                                                             <span className="ml-1 text-amber-600 dark:text-amber-400">(modificado)</span>
