@@ -38,7 +38,7 @@ function calculateStreaks(
     matchesByMatchId: Record<string, Match>
 ): { currentStreak: number; bestStreak: number } {
     // Collect all predictions for this user that have a finished result
-    const userPredictions: { kickoff: number; matchNumber: number; points: number }[] = [];
+    const userPredictions: { kickoff: number; matchNumber: number; hit: boolean }[] = [];
 
     Object.values(matchPredictionSummaries).forEach((summary) => {
         const prediction = summary.predictions.find((p) => p.userId === userId);
@@ -47,10 +47,14 @@ function calculateStreaks(
         const match = matchesByMatchId[summary.matchId];
         if (!match) return;
 
+        // Streak counts only if the score/outcome was correct (exact or partial)
+        // Knockout bonuses (qualifier, penalties) don't count as a "hit" on their own
+        const hit = prediction.exactScore === true || prediction.correctResult === true;
+
         userPredictions.push({
             kickoff: new Date(match.kickoff).getTime(),
             matchNumber: match.matchNumber,
-            points: prediction.points,
+            hit,
         });
     });
 
@@ -62,7 +66,7 @@ function calculateStreaks(
     let runningStreak = 0;
 
     for (let i = 0; i < userPredictions.length; i++) {
-        if (userPredictions[i].points > 0) {
+        if (userPredictions[i].hit) {
             runningStreak++;
             if (runningStreak > bestStreak) bestStreak = runningStreak;
         } else {
@@ -72,7 +76,7 @@ function calculateStreaks(
 
     // currentStreak: count backwards from last prediction
     for (let i = userPredictions.length - 1; i >= 0; i--) {
-        if (userPredictions[i].points > 0) {
+        if (userPredictions[i].hit) {
             currentStreak++;
         } else {
             break;
