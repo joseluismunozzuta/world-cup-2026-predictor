@@ -90,7 +90,7 @@ export async function saveKnockoutScore({
     updatedBy: string;
 }) {
     const resultRef = doc(db, "results", matchId);
-    const closesAt = new Date(Date.now() + 10 * 60 * 1000);
+    const closesAt = new Date(Date.now() + 5 * 60 * 1000);
 
     await setDoc(resultRef, {
         matchId,

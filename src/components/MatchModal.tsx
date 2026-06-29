@@ -875,8 +875,30 @@ export function MatchModal({ match, onClose, attendanceStatus, onClearAttendance
                             )}
                     </div>
 
+                    {/* Modification window — admin close button always visible regardless of prediction */}
+                    {isFinished && windowIsOpen && isKnockout && isAdmin && (
+                        <div className="mt-4 rounded-3xl bg-amber-50 border border-amber-200 p-5">
+                            <div className="flex items-center justify-between">
+                                <p className="text-base font-black text-amber-900">⏱ Tiempo Extra</p>
+                                <div className="flex flex-col items-end">
+                                    <span className="text-3xl font-black text-amber-700 tabular-nums leading-none">{formatCountdown(windowSecondsLeft)}</span>
+                                    <span className="text-xs font-semibold text-amber-500 uppercase tracking-wider">Tiempo restante</span>
+                                </div>
+                            </div>
+                            <p className="mt-2 text-sm text-amber-700">
+                                El partido terminó en empate. Los usuarios pueden modificar su pronóstico.
+                            </p>
+                            <button
+                                onClick={() => onCloseModificationWindow(match.id)}
+                                className="mt-3 w-full rounded-2xl bg-gray-200 py-2 text-xs font-bold text-gray-600"
+                            >
+                                Cerrar ventana (admin)
+                            </button>
+                        </div>
+                    )}
+
                     {/* Modification window banner — only for users who already predicted */}
-                    {isFinished && windowIsOpen && isKnockout && homeTeam && awayTeam && prediction && (
+                    {isFinished && windowIsOpen && isKnockout && homeTeam && awayTeam && prediction && !isAdmin && (
                         <div className="mt-4 rounded-3xl bg-amber-50 border border-amber-200 p-5">
                             <div className="flex items-center justify-between">
                                 <p className="text-base font-black text-amber-900">⏱ Tiempo Extra</p>
@@ -932,15 +954,6 @@ export function MatchModal({ match, onClose, attendanceStatus, onClearAttendance
                                 >
                                     {isSavingWindow ? "Guardando..." : "Guardar modificación"}
                                 </button>
-
-                                {isAdmin && (
-                                    <button
-                                        onClick={() => onCloseModificationWindow(match.id)}
-                                        className="w-full rounded-2xl bg-gray-200 py-2 text-xs font-bold text-gray-600"
-                                    >
-                                        Cerrar ventana (admin)
-                                    </button>
-                                )}
                             </div>
                         </div>
                     )}
