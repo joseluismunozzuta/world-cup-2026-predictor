@@ -111,7 +111,12 @@ export function MatchModal({ match, onClose, attendanceStatus, onClearAttendance
     const isKnockout = match.stage !== "group";
     const isFinished = resultMatch?.status === "finished";
     const isLive = status === "live";
-    const scoreResult = prediction && isFinished ? calculatePredictionPoints(prediction, resultMatch) : null;
+    // Knockout match with score saved but qualifier not yet registered
+    const knockoutAwaitingQualifier = isKnockout && isFinished &&
+        resultMatch?.homeScore !== undefined && !resultMatch?.qualifiedTeamId;
+    const scoreResult = prediction && isFinished && !knockoutAwaitingQualifier
+        ? calculatePredictionPoints(prediction, resultMatch)
+        : null;
 
     const homeTeam = match.homeTeamId ? teamsByFifaCode[match.homeTeamId] : null;
     const awayTeam = match.awayTeamId ? teamsByFifaCode[match.awayTeamId] : null;
@@ -129,10 +134,6 @@ export function MatchModal({ match, onClose, attendanceStatus, onClearAttendance
         return `${m}:${String(s).padStart(2, "0")}`;
     };
 
-    // For knockout draws: score saved but qualifier not yet set (window phase or after)
-    const knockoutAwaitingQualifier = isKnockout && isFinished &&
-        resultMatch?.homeScore !== undefined &&
-        !resultMatch?.qualifiedTeamId;
 
     // Jokers: 3 max per World Cup. If current prediction already has joker, don't count it twice.
     const JOKERS_MAX = 3 + jokersEarned;
@@ -556,7 +557,70 @@ export function MatchModal({ match, onClose, attendanceStatus, onClearAttendance
                         </div>
 
                         {prediction && !isPredicting ? (<>
-                            {isFinished && scoreResult && homeTeam && awayTeam ? (
+                            {knockoutAwaitingQualifier && homeTeam && awayTeam ? (
+                                /* Intermediate state: score saved, qualifier not yet registered */
+                                <div className="my-2 overflow-hidden rounded-2xl shadow-sm">
+                                    <div className="bg-amber-500 px-4 py-4 text-center">
+                                        <p className="text-3xl font-black text-white">⏱ En juego</p>
+                                        <p className="mt-0.5 text-xs font-semibold text-white/90">
+                                            Tiempo extra o penales — puntos pendientes
+                                        </p>
+                                    </div>
+                                    <div className="bg-white dark:bg-gray-600 divide-y divide-gray-100 dark:divide-gray-500">
+                                        {/* Marcador inicial */}
+                                        <div className="px-4 py-3">
+                                            <p className="mb-1 text-center text-[11px] font-bold uppercase tracking-widest text-gray-400">Pronóstico inicial</p>
+                                            <ScoreResultSection
+                                                homeTeam={homeTeam}
+                                                awayTeam={awayTeam}
+                                                result={{ matchId: match.id, ...prediction, status: "scheduled" }}
+                                            />
+                                        </div>
+                                        {/* Clasificado — separado y destacado */}
+                                        {prediction.qualifiedTeamId && (() => {
+                                            const qualTeam = teamsByFifaCode[prediction.qualifiedTeamId];
+                                            const resultWasDraw = resultMatch && resultMatch.homeScore === resultMatch.awayScore;
+                                            const method = resultWasDraw
+                                                ? (prediction.penaltiesIfDraw ? "En penales" : "Tiempo extra")
+                                                : "en los 90'";
+                                            return (
+                                                <div className="px-4 py-3 bg-amber-50 dark:bg-amber-900/20">
+                                                    <p className="mb-2 text-center text-[11px] font-bold uppercase tracking-widest text-amber-600 dark:text-amber-400">
+                                                        {prediction.modifiedDuringWindow ? "✏️ Ventana de modificación" : "Clasificado pronosticado"}
+                                                    </p>
+                                                    <div className="flex items-center justify-center gap-2.5">
+                                                        {qualTeam && (
+                                                            <img
+                                                                src={`https://flagcdn.com/w40/${qualTeam.iso2.toLowerCase()}.png`}
+                                                                alt={qualTeam.nameEs}
+                                                                className="h-6 w-auto rounded-sm shadow-sm"
+                                                            />
+                                                        )}
+                                                        <span className="text-base font-black text-amber-900 dark:text-amber-100">
+                                                            Clasifica {qualTeam?.nameEs}
+                                                        </span>
+                                                        <span className="rounded-full bg-amber-500 px-2.5 py-0.5 text-[10px] font-black text-white uppercase tracking-wide">
+                                                            {method}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })()}
+                                        {/* Resultado parcial */}
+                                        <div className="px-4 py-3">
+                                            <p className="mb-1 text-center text-[11px] font-bold uppercase tracking-widest text-gray-400">Resultado parcial</p>
+                                            <ScoreResultSection
+                                                homeTeam={homeTeam}
+                                                awayTeam={awayTeam}
+                                                result={resultMatch}
+                                            />
+                                            <p className="mt-1 text-center text-xs text-amber-600 dark:text-amber-400 font-semibold">
+                                                Clasificado por confirmar
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : isFinished && scoreResult && homeTeam && awayTeam ? (
                                 <div className="my-2 overflow-hidden rounded-2xl shadow-sm">
                                     {/* Points banner */}
                                     <div className={`px-4 py-4 text-center ${
@@ -588,6 +652,21 @@ export function MatchModal({ match, onClose, attendanceStatus, onClearAttendance
                                                 awayTeam={awayTeam}
                                                 result={{ matchId: match.id, ...prediction, status: "scheduled" }}
                                             />
+                                            {isKnockout && prediction.qualifiedTeamId && (() => {
+                                                const qualTeam = teamsByFifaCode[prediction.qualifiedTeamId];
+                                                const resultWasDraw = resultMatch?.homeScore === resultMatch?.awayScore;
+                                                return (
+                                                    <p className="mt-1 text-center text-xs text-gray-500 dark:text-gray-400">
+                                                        Clasifica: <span className="font-bold">{qualTeam?.nameEs}</span>
+                                                        {resultWasDraw && prediction.penaltiesIfDraw !== undefined && (
+                                                            <span className="ml-1">· {prediction.penaltiesIfDraw ? "En penales" : "Tiempo extra"}</span>
+                                                        )}
+                                                        {prediction.modifiedDuringWindow && (
+                                                            <span className="ml-1 text-amber-600 dark:text-amber-400">(modificado)</span>
+                                                        )}
+                                                    </p>
+                                                );
+                                            })()}
                                         </div>
                                         <div className="px-4 py-3">
                                             <p className="mb-1 text-center text-[11px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-400">Resultado oficial</p>

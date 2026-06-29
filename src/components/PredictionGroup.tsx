@@ -159,8 +159,11 @@ export function PredictionGroup({
 
                 if (!homeTeam || !awayTeam || !prediction) return null;
 
+                const isKnockoutAwaitingQualifier = match.stage !== "group" &&
+                    result?.status === "finished" && !result?.qualifiedTeamId;
+
                 const points =
-                    result?.status === "finished"
+                    result?.status === "finished" && !isKnockoutAwaitingQualifier
                         ? calculatePredictionPoints(prediction, result).points
                         : null;
 
@@ -177,11 +180,15 @@ export function PredictionGroup({
                                 <span className="shrink-0 rounded-full bg-gray-200 dark:bg-gray-700 px-2 py-0.5 text-[9px] font-black text-gray-500 dark:text-gray-400">
                                     #{match.matchNumber}
                                 </span>
-                                {result?.status !== "finished" &&
+                                {isKnockoutAwaitingQualifier ? (
+                                    <span className="rounded-full bg-amber-100 dark:bg-amber-900/40 px-2 py-0.5 text-[9px] font-black text-amber-700 dark:text-amber-400">
+                                        ⏱ Tiempo extra / penales
+                                    </span>
+                                ) : result?.status !== "finished" && (
                                     <p className="text-xs font-bold text-gray-400 dark:text-gray-500 truncate">
                                         {formatMatchDate(match.kickoff)}
                                     </p>
-                                }
+                                )}
                             </div>
 
                             {points !== null && (
@@ -360,7 +367,7 @@ export function PredictionGroup({
                                                             const resultWasDraw = result && result.homeScore !== undefined ? result.homeScore === result.awayScore : null;
                                                             const isDraw = resultWasDraw !== null ? resultWasDraw : userPrediction.homeScore === userPrediction.awayScore;
 
-                                                            const isMyRow = isFinished && currentUserId && user.uid === currentUserId && homeTeam && awayTeam && result;
+                                                            const isMyRow = isFinished && !isKnockoutAwaitingQualifier && currentUserId && user.uid === currentUserId && homeTeam && awayTeam && result;
 
                                                             return (
                                                                 <div key={user.uid} className="px-3 py-1.5 text-sm space-y-0.5">
@@ -458,8 +465,8 @@ export function PredictionGroup({
                                             })()}
                                         </div>
 
-                                        {/* Group share button — only for finished matches */}
-                                        {result?.status === "finished" && homeTeam && awayTeam && (
+                                        {/* Group share button — only for fully finished matches */}
+                                        {result?.status === "finished" && !isKnockoutAwaitingQualifier && homeTeam && awayTeam && (
                                             <button
                                                 disabled={loadingShareMatchId === `group-${match.id}`}
                                                 onClick={async (e) => {
