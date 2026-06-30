@@ -15,6 +15,7 @@ import { AppUser } from "@/lib/users";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { promoteMatchToWatchParty, removeMatchFromWatchParty, updateWatchPartyHost, WatchPartyMatch } from "@/lib/partyMatches";
 import { deleteAttendanceByMatch } from "@/lib/attendance";
+import { CountryFlag } from "./CountryFlag";
 
 type Props = {
     match: Match | null;
@@ -36,6 +37,7 @@ type Props = {
     onCloseModificationWindow: (matchId: string) => void;
     onSaveKnockoutScore?: (matchId: string, homeScore: number, awayScore: number) => Promise<void>;
     onSaveKnockoutQualifier?: (matchId: string, qualifiedTeamId: string, wentToPenalties: boolean) => Promise<void>;
+    onDeleteResult?: (matchId: string) => Promise<void>;
     jokersUsed: number;
     jokersEarned: number;
     status: MatchStatus;
@@ -63,7 +65,7 @@ export function MatchModal({ match, onClose, attendanceStatus, onClearAttendance
     onSavePrediction, prediction, onSaveResult, resultMatch, status, attendees, notAttendees,
     appUser, isWatchParty, watchParty, members, onSavingWatchPartyChange,
     onSaveWindowModification, onCloseModificationWindow, onSaveKnockoutScore, onSaveKnockoutQualifier,
-    jokersUsed, jokersEarned }: Props) {
+    onDeleteResult, jokersUsed, jokersEarned }: Props) {
 
     const [isPredicting, setIsPredicting] = useState(false);
     const [isSavingResult, setIsSavingResult] = useState(false);
@@ -91,6 +93,7 @@ export function MatchModal({ match, onClose, attendanceStatus, onClearAttendance
     const [windowQualified, setWindowQualified] = useState<string>(prediction?.qualifiedTeamId ?? "");
     const [windowPenalties, setWindowPenalties] = useState<boolean>(prediction?.penaltiesIfDraw ?? false);
     const [isSavingWindow, setIsSavingWindow] = useState(false);
+    const [showModifyForm, setShowModifyForm] = useState(false);
 
     // Countdown: seconds remaining in modification window
     const [windowSecondsLeft, setWindowSecondsLeft] = useState<number>(0);
@@ -249,6 +252,14 @@ export function MatchModal({ match, onClose, attendanceStatus, onClearAttendance
                 className="relative w-full max-w-md max-h-[80vh]
                 overflow-y-auto rounded-3xl bg-white dark:bg-gray-800 px-6 shadow-xl"
                 onClick={(event) => event.stopPropagation()}>
+
+                {/* Saving window overlay */}
+                {isSavingWindow && (
+                    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center rounded-3xl bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm">
+                        <div className="h-10 w-10 animate-spin rounded-full border-4 border-amber-200 border-t-amber-600" />
+                        <p className="mt-3 text-sm font-bold text-amber-700">Guardando pronóstico...</p>
+                    </div>
+                )}
 
                 <div className="bg-white dark:bg-gray-800 my-4 flex flex-col items-center justify-center gap-2">
                     <button
@@ -623,24 +634,23 @@ export function MatchModal({ match, onClose, attendanceStatus, onClearAttendance
                             ) : isFinished && scoreResult && homeTeam && awayTeam ? (
                                 <div className="my-2 overflow-hidden rounded-2xl shadow-sm">
                                     {/* Points banner — use exactScore/correctResult, not raw points */}
-                                    <div className={`px-4 py-4 text-center ${
-                                        scoreResult.exactScore
-                                            ? "bg-green-500"
-                                            : scoreResult.correctResult
+                                    <div className={`px-4 py-4 text-center ${scoreResult.exactScore
+                                        ? "bg-green-500"
+                                        : scoreResult.correctResult
                                             ? "bg-yellow-500"
                                             : scoreResult.points > 0
-                                            ? "bg-blue-500"
-                                            : "bg-red-500"
-                                    }`}>
+                                                ? "bg-blue-500"
+                                                : "bg-red-500"
+                                        }`}>
                                         <p className="text-3xl font-black text-white">+{scoreResult.points} pts</p>
                                         <p className="mt-0.5 text-xs font-semibold text-white/80">
                                             {scoreResult.exactScore
                                                 ? "¡Marcador exacto! 🎯"
                                                 : scoreResult.correctResult
-                                                ? "¡Resultado correcto! ✅"
-                                                : scoreResult.points > 0
-                                                ? "Puntos por clasificado/penales 🏆"
-                                                : "No acertaste ❌"}
+                                                    ? "¡Resultado correcto! ✅"
+                                                    : scoreResult.points > 0
+                                                        ? "Puntos por clasificado/penales 🏆"
+                                                        : "No acertaste ❌"}
                                         </p>
                                         {prediction.jokerActivated && (
                                             <p className="mt-1 text-xs font-black text-white/90">🃏 Joker · puntos x2</p>
@@ -711,72 +721,72 @@ export function MatchModal({ match, onClose, attendanceStatus, onClearAttendance
                                     </div>
                                 </div>
                             ) : (
-                            <div className="my-2 rounded-2xl bg-white dark:bg-gray-600 p-4 text-center shadow-sm">
-                                <p className="text-sm text-gray-500 dark:text-gray-400">Tu pronóstico</p>
+                                <div className="my-2 rounded-2xl bg-white dark:bg-gray-600 p-4 text-center shadow-sm">
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">Tu pronóstico</p>
 
-                                {homeTeam && awayTeam && (
-                                    <ScoreResultSection
-                                        homeTeam={homeTeam}
-                                        awayTeam={awayTeam}
-                                        result={{ matchId: match.id, ...prediction, status: "scheduled" }}
-                                    />
-                                )}
+                                    {homeTeam && awayTeam && (
+                                        <ScoreResultSection
+                                            homeTeam={homeTeam}
+                                            awayTeam={awayTeam}
+                                            result={{ matchId: match.id, ...prediction, status: "scheduled" }}
+                                        />
+                                    )}
 
-                                {prediction.jokerActivated && (
-                                    <div className="mt-2 flex justify-center">
-                                        <span className="inline-flex items-center gap-1.5 rounded-full bg-purple-100 dark:bg-purple-900/40 px-3 py-1 text-xs font-black text-purple-700 dark:text-purple-300">
-                                            🃏 Joker activado · puntos x2
-                                        </span>
-                                    </div>
-                                )}
-
-                                {isKnockout && prediction.qualifiedTeamId && homeTeam && awayTeam && (() => {
-                                    const qualTeam = teamsByFifaCode[prediction.qualifiedTeamId];
-                                    const isDraw = prediction.homeScore === prediction.awayScore;
-                                    return (
-                                        <div className="mt-3 overflow-hidden rounded-2xl shadow-sm">
-                                            <div className="bg-cyan-600 px-3 py-1.5 text-center">
-                                                <p className="text-[10px] font-black uppercase tracking-widest text-violet-200">Clasifica</p>
-                                            </div>
-                                            <div className="bg-cyan-50 dark:bg-cyan-950/40 px-4 py-3 flex items-center justify-center gap-3">
-                                                {qualTeam && (
-                                                    <img
-                                                        src={`https://flagcdn.com/w40/${qualTeam.iso2.toLowerCase()}.png`}
-                                                        alt={qualTeam.nameEs}
-                                                        className="h-6 w-auto rounded-sm shadow-sm"
-                                                    />
-                                                )}
-                                                <span className="text-base font-black text-cyan-800 dark:text-cyan-200">
-                                                    {qualTeam?.nameEs ?? prediction.qualifiedTeamId}
-                                                </span>
-                                                {isDraw && prediction.penaltiesIfDraw !== undefined && (
-                                                    <span className="rounded-full bg-cyan-200 dark:bg-cyan-800 px-2.5 py-0.5 text-[10px] font-black text-cyan-700 dark:text-cyan-200 uppercase tracking-wide">
-                                                        {prediction.penaltiesIfDraw ? "En penales" : "Tiempo extra"}
-                                                    </span>
-                                                )}
-                                            </div>
+                                    {prediction.jokerActivated && (
+                                        <div className="mt-2 flex justify-center">
+                                            <span className="inline-flex items-center gap-1.5 rounded-full bg-purple-100 dark:bg-purple-900/40 px-3 py-1 text-xs font-black text-purple-700 dark:text-purple-300">
+                                                🃏 Joker activado · puntos x2
+                                            </span>
                                         </div>
-                                    );
-                                })()}
+                                    )}
 
-                                {canPredict && !isFinished && (
-                                    <button
-                                        onClick={() => {
-                                            setHomeScore(String(prediction.homeScore));
-                                            setAwayScore(String(prediction.awayScore));
-                                            setJokerActive(prediction.jokerActivated ?? false);
-                                            setIsPredicting(true);
-                                        }}
-                                        className="mt-4 w-full rounded-2xl bg-yellow-200 px-4 py-3 text-sm font-bold text-black transition hover:bg-yellow-400"
-                                    >
-                                        Cambiar pronóstico
-                                    </button>
-                                )}
+                                    {isKnockout && prediction.qualifiedTeamId && homeTeam && awayTeam && (() => {
+                                        const qualTeam = teamsByFifaCode[prediction.qualifiedTeamId];
+                                        const isDraw = prediction.homeScore === prediction.awayScore;
+                                        return (
+                                            <div className="mt-3 overflow-hidden rounded-2xl shadow-sm">
+                                                <div className="bg-cyan-600 px-3 py-1.5 text-center">
+                                                    <p className="text-[10px] font-black uppercase tracking-widest text-violet-200">Clasifica</p>
+                                                </div>
+                                                <div className="bg-cyan-50 dark:bg-cyan-950/40 px-4 py-3 flex items-center justify-center gap-3">
+                                                    {qualTeam && (
+                                                        <img
+                                                            src={`https://flagcdn.com/w40/${qualTeam.iso2.toLowerCase()}.png`}
+                                                            alt={qualTeam.nameEs}
+                                                            className="h-6 w-auto rounded-sm shadow-sm"
+                                                        />
+                                                    )}
+                                                    <span className="text-base font-black text-cyan-800 dark:text-cyan-200">
+                                                        {qualTeam?.nameEs ?? prediction.qualifiedTeamId}
+                                                    </span>
+                                                    {isDraw && prediction.penaltiesIfDraw !== undefined && (
+                                                        <span className="rounded-full bg-cyan-200 dark:bg-cyan-800 px-2.5 py-0.5 text-[10px] font-black text-cyan-700 dark:text-cyan-200 uppercase tracking-wide">
+                                                            {prediction.penaltiesIfDraw ? "En penales" : "Tiempo extra"}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })()}
 
-                                {!canPredict && !isFinished && (
-                                    <span className="text-center text-sm text-red-400 font-semibold">El partido ya empezó.</span>
-                                )}
-                            </div>
+                                    {canPredict && !isFinished && (
+                                        <button
+                                            onClick={() => {
+                                                setHomeScore(String(prediction.homeScore));
+                                                setAwayScore(String(prediction.awayScore));
+                                                setJokerActive(prediction.jokerActivated ?? false);
+                                                setIsPredicting(true);
+                                            }}
+                                            className="mt-4 w-full rounded-2xl bg-yellow-200 px-4 py-3 text-sm font-bold text-black transition hover:bg-yellow-400"
+                                        >
+                                            Cambiar pronóstico
+                                        </button>
+                                    )}
+
+                                    {!canPredict && !isFinished && (
+                                        <span className="text-center text-sm text-red-400 font-semibold">El partido ya empezó.</span>
+                                    )}
+                                </div>
                             )}
                         </>)
                             : !isPredicting ? (
@@ -908,13 +918,12 @@ export function MatchModal({ match, onClose, attendanceStatus, onClearAttendance
                                     <button
                                         disabled={!canActivateJoker}
                                         onClick={() => canActivateJoker && setJokerActive((v) => !v)}
-                                        className={`mt-4 w-full rounded-2xl px-4 py-3 text-left transition ${
-                                            jokerActive
-                                                ? "bg-purple-600 text-white"
-                                                : canActivateJoker
+                                        className={`mt-4 w-full rounded-2xl px-4 py-3 text-left transition ${jokerActive
+                                            ? "bg-purple-600 text-white"
+                                            : canActivateJoker
                                                 ? "bg-purple-50 border border-purple-200 text-purple-900"
                                                 : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                                        }`}
+                                            }`}
                                     >
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-2">
@@ -979,121 +988,107 @@ export function MatchModal({ match, onClose, attendanceStatus, onClearAttendance
                             )}
                     </div>
 
-                    {/* Modification window — admin banner (always visible) + modification form if admin has a prediction */}
-                    {isFinished && windowIsOpen && isKnockout && isAdmin && homeTeam && awayTeam && (
-                        <div className="mt-4 rounded-3xl bg-amber-50 border border-amber-200 p-5">
+                    {/* Modification window banner — admin + users with prediction */}
+                    {isFinished && windowIsOpen && isKnockout && homeTeam && awayTeam && (isAdmin || prediction) && (
+                        <div className="mt-4 rounded-3xl bg-blue-100 border border-blue-200 p-5 shadow-lg dark:shadow-sky-800">
                             <div className="flex items-center justify-between">
-                                <p className="text-base font-black text-amber-900">⏱ Tiempo Extra</p>
+                                <p className="text-base font-black text-blue-900">⏱ Tiempo Extra</p>
                                 <div className="flex flex-col items-end">
-                                    <span className="text-3xl font-black text-amber-700 tabular-nums leading-none">{formatCountdown(windowSecondsLeft)}</span>
-                                    <span className="text-xs font-semibold text-amber-500 uppercase tracking-wider">Tiempo restante</span>
+                                    <span className="text-3xl font-black text-blue-700 tabular-nums leading-none">{formatCountdown(windowSecondsLeft)}</span>
+                                    <span className="text-xs font-semibold text-blue-500 uppercase tracking-wider">Tiempo restante</span>
                                 </div>
                             </div>
-                            <p className="mt-2 text-sm text-amber-700">
-                                El partido terminó en empate. Los usuarios pueden modificar su pronóstico.
+                            <p className="mt-2 text-xs text-gray-900 font-semibold text-center">
+                                El partido terminó en empate. Puedes modificar tu pronóstico de equipo clasificado y si es en penales o tiempo extra.
                             </p>
 
-                            {prediction && <>
-                                {prediction.modifiedDuringWindow && (
-                                    <p className="mt-2 text-xs text-amber-600 font-semibold">✓ Ya modificaste esta apuesta.</p>
-                                )}
-                                <div className="mt-4 space-y-3">
-                                    <div>
-                                        <p className="text-xs font-bold text-amber-800 uppercase tracking-wider mb-2">¿Quién clasifica?</p>
-                                        <div className="flex gap-2">
-                                            <button onClick={() => setWindowQualified(match.homeTeamId ?? "")} className={`flex-1 rounded-xl py-2 text-sm font-bold border ${windowQualified === match.homeTeamId ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-700 border-gray-200"}`}>{homeTeam.nameEs}</button>
-                                            <button onClick={() => setWindowQualified(match.awayTeamId ?? "")} className={`flex-1 rounded-xl py-2 text-sm font-bold border ${windowQualified === match.awayTeamId ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-700 border-gray-200"}`}>{awayTeam.nameEs}</button>
+                            {prediction && (() => {
+                                const currentQualTeam = prediction.qualifiedTeamId ? teamsByFifaCode[prediction.qualifiedTeamId] : null;
+                                const currentMethod = prediction.penaltiesIfDraw ? "Penales" : "Tiempo extra";
+                                const unchanged = windowQualified === prediction.qualifiedTeamId && windowPenalties === (prediction.penaltiesIfDraw ?? false);
+                                return <>
+                                    <div className="mt-3 rounded-2xl bg-purple-200 shadow-md shadow-gray-700 px-4 py-3 flex items-center justify-between">
+                                        <div className="flex flex-col gap-1">
+                                            <p className="text-xs font-bold text-blue-700 uppercase tracking-wider mb-0.5">Clasificado pronosticado</p>
+                                            <div className="flex flex-row gap-3">
+                                                <CountryFlag homeTeam={currentQualTeam!} />
+                                                <p className="text-sm font-black text-blue-900">
+                                                    {currentQualTeam?.nameEs ?? "—"}
+                                                    <span className="ml-2 text-xs font-semibold text-blue-600">{currentMethod}</span>
+                                                </p>
+                                            </div>
                                         </div>
+                                        {prediction.modifiedDuringWindow && (
+                                            <span className="text-xs font-bold text-black rounded-lg px-2 py-1">✏️ Modificado</span>
+                                        )}
                                     </div>
-                                    <div>
-                                        <p className="text-xs font-bold text-amber-800 uppercase tracking-wider mb-2">¿Hay penales?</p>
-                                        <div className="flex gap-2">
-                                            <button onClick={() => setWindowPenalties(false)} className={`flex-1 rounded-xl py-2 text-sm font-bold border ${!windowPenalties ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-700 border-gray-200"}`}>No</button>
-                                            <button onClick={() => setWindowPenalties(true)} className={`flex-1 rounded-xl py-2 text-sm font-bold border ${windowPenalties ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-700 border-gray-200"}`}>Sí</button>
+
+                                    {!showModifyForm ? (
+                                        <button
+                                            onClick={() => setShowModifyForm(true)}
+                                            className="mt-3 w-75 flex justify-center mx-auto rounded-2xl shadow-md shadow-gray-700  bg-purple-200 py-2.5 text-sm text-gray-700 font-semibold hover:bg-blue-100 transition"
+                                        >
+                                            ✏️ Modificar este pronóstico
+                                        </button>
+                                    ) : (
+                                        <div className="mt-3 space-y-3">
+                                            <div className="rounded-2xl bg-orange-50 border border-orange-200 px-4 py-3">
+                                                <p className="text-xs font-bold text-orange-700">⚠️ Atención</p>
+                                                <p className="text-xs text-orange-600 mt-0.5">Si tu pronóstico de marcador ya apunta al ganador correcto,
+                                                    modificar el clasificado te hará perder el bonus de convicción.
+
+                                                    Solo puedes guardar una predicción distinta a la que ya tienes actualmente ❗</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs font-bold text-amber-800 uppercase tracking-wider mb-2">¿Quién clasifica?</p>
+                                                <div className="flex gap-2">
+                                                    <button onClick={() => setWindowQualified(match.homeTeamId ?? "")} className={`flex-1 rounded-xl py-2 text-sm font-bold border ${windowQualified === match.homeTeamId ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-700 border-gray-200"}`}>{homeTeam.nameEs}</button>
+                                                    <button onClick={() => setWindowQualified(match.awayTeamId ?? "")} className={`flex-1 rounded-xl py-2 text-sm font-bold border ${windowQualified === match.awayTeamId ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-700 border-gray-200"}`}>{awayTeam.nameEs}</button>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs font-bold text-amber-800 uppercase tracking-wider mb-2">¿Hay penales?</p>
+                                                <div className="flex gap-2">
+                                                    <button onClick={() => setWindowPenalties(false)} className={`flex-1 rounded-xl py-2 text-sm font-bold border ${!windowPenalties ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-700 border-gray-200"}`}>No</button>
+                                                    <button onClick={() => setWindowPenalties(true)} className={`flex-1 rounded-xl py-2 text-sm font-bold border ${windowPenalties ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-700 border-gray-200"}`}>Sí</button>
+                                                </div>
+                                            </div>
+                                            <button
+                                                disabled={!windowQualified || isSavingWindow || unchanged}
+                                                onClick={async () => {
+                                                    if (!windowQualified) return;
+                                                    setIsSavingWindow(true);
+                                                    await onSaveWindowModification(match.id, windowQualified, windowPenalties);
+                                                    setIsSavingWindow(false);
+                                                    setShowModifyForm(false);
+                                                }}
+                                                className="w-full rounded-2xl bg-amber-600 py-3 text-sm font-black text-white disabled:opacity-50"
+                                            >
+                                                Guardar modificación
+                                            </button>
+                                            <button
+                                                onClick={() => setShowModifyForm(false)}
+                                                className="w-full rounded-2xl bg-transparent py-2 text-xs font-semibold text-amber-600"
+                                            >
+                                                Cancelar
+                                            </button>
                                         </div>
-                                    </div>
-                                    <button
-                                        disabled={!windowQualified || isSavingWindow}
-                                        onClick={async () => {
-                                            if (!windowQualified) return;
-                                            setIsSavingWindow(true);
-                                            await onSaveWindowModification(match.id, windowQualified, windowPenalties);
-                                            setIsSavingWindow(false);
-                                        }}
-                                        className="w-full rounded-2xl bg-amber-600 py-3 text-sm font-black text-white disabled:opacity-50"
-                                    >
-                                        {isSavingWindow ? "Guardando..." : "Guardar modificación"}
-                                    </button>
-                                </div>
-                            </>}
+                                    )}
+                                </>;
+                            })()}
 
-                            <button
-                                onClick={() => onCloseModificationWindow(match.id)}
-                                className="mt-3 w-full rounded-2xl bg-gray-200 py-2 text-xs font-bold text-gray-600"
-                            >
-                                Cerrar ventana (admin)
-                            </button>
-                        </div>
-                    )}
-
-                    {/* Modification window banner — only for users who already predicted */}
-                    {isFinished && windowIsOpen && isKnockout && homeTeam && awayTeam && prediction && !isAdmin && (
-                        <div className="mt-4 rounded-3xl bg-amber-50 border border-amber-200 p-5">
-                            <div className="flex items-center justify-between">
-                                <p className="text-base font-black text-amber-900">⏱ Tiempo Extra</p>
-                                <div className="flex flex-col items-end">
-                                    <span className="text-3xl font-black text-amber-700 tabular-nums leading-none">{formatCountdown(windowSecondsLeft)}</span>
-                                    <span className="text-xs font-semibold text-amber-500 uppercase tracking-wider">Tiempo restante</span>
-                                </div>
-                            </div>
-                            <p className="mt-2 text-sm text-amber-700">
-                                El partido terminó en empate. Puedes modificar tu pronóstico de clasificado y penales.
-                            </p>
-
-                            {prediction?.modifiedDuringWindow && (
-                                <p className="mt-2 text-xs text-amber-600 font-semibold">✓ Ya modificaste esta apuesta.</p>
-                            )}
-
-                            <div className="mt-4 space-y-3">
-                                <div>
-                                    <p className="text-xs font-bold text-amber-800 uppercase tracking-wider mb-2">¿Quién clasifica?</p>
-                                    <div className="flex gap-2">
-                                        <button
-                                            onClick={() => setWindowQualified(match.homeTeamId ?? "")}
-                                            className={`flex-1 rounded-xl py-2 text-sm font-bold border ${windowQualified === match.homeTeamId ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-700 border-gray-200"}`}
-                                        >
-                                            {homeTeam.nameEs}
-                                        </button>
-                                        <button
-                                            onClick={() => setWindowQualified(match.awayTeamId ?? "")}
-                                            className={`flex-1 rounded-xl py-2 text-sm font-bold border ${windowQualified === match.awayTeamId ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-700 border-gray-200"}`}
-                                        >
-                                            {awayTeam.nameEs}
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <p className="text-xs font-bold text-amber-800 uppercase tracking-wider mb-2">¿Hay penales?</p>
-                                    <div className="flex gap-2">
-                                        <button onClick={() => setWindowPenalties(false)} className={`flex-1 rounded-xl py-2 text-sm font-bold border ${!windowPenalties ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-700 border-gray-200"}`}>No</button>
-                                        <button onClick={() => setWindowPenalties(true)} className={`flex-1 rounded-xl py-2 text-sm font-bold border ${windowPenalties ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-700 border-gray-200"}`}>Sí</button>
-                                    </div>
-                                </div>
-
+                            {isAdmin && (
                                 <button
-                                    disabled={!windowQualified || isSavingWindow}
-                                    onClick={async () => {
-                                        if (!windowQualified) return;
-                                        setIsSavingWindow(true);
-                                        await onSaveWindowModification(match.id, windowQualified, windowPenalties);
-                                        setIsSavingWindow(false);
+                                    onClick={() => {
+                                        const confirmed = window.confirm("¿Cerrar la ventana de modificación? Los usuarios ya no podrán cambiar su pronóstico.");
+                                        if (!confirmed) return;
+                                        onCloseModificationWindow(match.id);
                                     }}
-                                    className="w-full rounded-2xl bg-amber-600 py-3 text-sm font-black text-white disabled:opacity-50"
+                                    className="mt-3 w-1/2 flex justify-center mx-auto rounded-2xl shadow-md shadow-gray-700 bg-red-400 py-2 text-xs font-bold text-gray-600 hover:bg-gray-300 transition"
                                 >
-                                    {isSavingWindow ? "Guardando..." : "Guardar modificación"}
+                                    Cerrar ventana de modificación
                                 </button>
-                            </div>
+                            )}
                         </div>
                     )}
 
@@ -1264,6 +1259,27 @@ export function MatchModal({ match, onClose, attendanceStatus, onClearAttendance
                                     </button>
                                 </div>
                             </div>) : null}
+
+                    {/* Admin: delete result */}
+                    {isFinished && isAdmin && onDeleteResult && (
+                        <div className="my-4">
+                            <button
+                                disabled={isSavingResult}
+                                onClick={async () => {
+                                    const confirmed = window.confirm(
+                                        "¿Eliminar el resultado de este partido? Esto también eliminará el resumen de pronósticos. Esta acción no se puede deshacer."
+                                    );
+                                    if (!confirmed) return;
+                                    setIsSavingResult(true);
+                                    await onDeleteResult(match.id);
+                                    setIsSavingResult(false);
+                                }}
+                                className="w-full rounded-2xl border border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-950 px-4 py-3 text-sm font-bold text-red-600 dark:text-gray-100 hover:bg-red-100 dark:hover:bg-red-900 disabled:cursor-not-allowed disabled:opacity-50 transition"
+                            >
+                                {isSavingResult ? "Eliminando..." : "🗑 Eliminar resultado"}
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

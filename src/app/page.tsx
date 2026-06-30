@@ -17,7 +17,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { JoinPartyView } from "@/components/JoinPartyView";
 import { savePredictionToFirebase, saveSpecialPredictionField, SpecialPredictionsMap, StartedMatchPredictionsMap, subscribeToMyPredictions, subscribeToPartySpecialPredictions, subscribeToStartedMatchPredictions } from "@/lib/predictions";
-import { ResultsMap, saveResultToFirebase, saveKnockoutScore, saveKnockoutQualifier, subscribeToResults } from "@/lib/results";
+import { ResultsMap, saveResultToFirebase, saveKnockoutScore, saveKnockoutQualifier, deleteResult, subscribeToResults } from "@/lib/results";
 import { AppUser, subscribeToUsers } from "@/lib/users";
 import { clearAttendanceFromFirebase, AttendanceByMatchMap, saveAttendanceToFirebase, subscribeToMatchAttendance } from "@/lib/attendance";
 import { Party, promoteUserToAdmin, removeUserFromAdmin, subscribeToParty, setJokerEarningStartDate } from "@/lib/parties";
@@ -390,6 +390,16 @@ export default function Home() {
       alert("Error al guardar el marcador. Revisa la consola.");
     } finally {
       setIsSavingResult(false);
+    }
+  };
+
+  const handleDeleteResult = async (matchId: string) => {
+    if (!appUser || !isAdmin || !appUser.activePartyId) return;
+    try {
+      await deleteResult(matchId, appUser.activePartyId);
+    } catch (error) {
+      console.error("Error eliminando resultado:", error);
+      alert("Error al eliminar el resultado. Revisa la consola.");
     }
   };
 
@@ -1062,6 +1072,7 @@ export default function Home() {
         onCloseModificationWindow={handleCloseModificationWindow}
         onSaveKnockoutScore={handleSaveKnockoutScore}
         onSaveKnockoutQualifier={handleSaveKnockoutQualifier}
+        onDeleteResult={handleDeleteResult}
         jokersUsed={Object.values(myPredictions).filter((p) => p.jokerActivated).length}
         jokersEarned={leaderboard.find((r) => r.userId === appUser?.uid)?.jokersEarned ?? 0}
       />

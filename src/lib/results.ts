@@ -1,5 +1,6 @@
 import {
     collection,
+    deleteDoc,
     doc,
     onSnapshot,
     serverTimestamp,
@@ -124,4 +125,11 @@ export async function saveKnockoutQualifier({
         updatedBy,
         updatedAt: serverTimestamp(),
     }, { merge: true });
+}
+
+export async function deleteResult(matchId: string, partyId: string) {
+    await Promise.all([
+        deleteDoc(doc(db, "results", matchId)),
+        deleteDoc(doc(db, "parties", partyId, "matchPredictionSummaries", matchId)),
+    ]);
 }

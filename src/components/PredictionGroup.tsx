@@ -292,7 +292,7 @@ export function PredictionGroup({
                             </>
                         )}
 
-                        {matchStarted && (
+                        {matchStarted && !result?.modificationWindowOpen && (
                             <Accordion
                                 className="mt-4 rounded-2xl bg-white/70 dark:bg-white/10 px-4"
                                 onClick={(e) => e.stopPropagation()}
@@ -343,13 +343,13 @@ export function PredictionGroup({
                                                 });
 
                                                 return (
-                                                    <div className="rounded-2xl bg-gray-50 dark:bg-white/10 divide-y divide-gray-100 dark:divide-white/5 overflow-hidden">
+                                                    <div className="rounded-2xl divide-y divide-gray-100 dark:divide-white/5 overflow-hidden">
                                                         {sortedUsers.map((user) => {
                                                             const userPrediction = predictionsByUserId[user.uid];
 
                                                             if (!userPrediction) {
                                                                 return (
-                                                                    <div key={user.uid} className="flex items-center gap-2 px-3 py-1.5">
+                                                                    <div key={user.uid} className="flex items-center gap-2 p-1">
                                                                         <Avatar className="h-6 w-6 shrink-0">
                                                                             <AvatarImage src={user.avatarUrl ?? user.photoURL ?? undefined} referrerPolicy="no-referrer" />
                                                                             <AvatarFallback className="text-[9px]">{user.name.charAt(0).toUpperCase()}</AvatarFallback>
@@ -386,7 +386,7 @@ export function PredictionGroup({
                                                             const isMyRow = isFinished && !isKnockoutAwaitingQualifier && currentUserId && user.uid === currentUserId && homeTeam && awayTeam && result;
 
                                                             return (
-                                                                <div key={user.uid} className="px-3 py-1.5 text-sm space-y-0.5">
+                                                                <div key={user.uid} className="p-1 text-sm space-y-0.5">
                                                                     <div className="flex items-center gap-1">
                                                                         <div className={`${isMyRow ? "w-[50%]" : "w-[62%]"} flex items-center gap-2 min-w-0`}>
                                                                             <Avatar className="h-6 w-6 shrink-0">
@@ -502,7 +502,6 @@ export function PredictionGroup({
                                                                                 {originalQualifiedTeam && (
                                                                                     <div className={`flex items-center gap-1.5 text-[10px] font-medium ${modifiedDuringWindow ? "opacity-50 line-through" : "text-gray-500 dark:text-gray-400"}`}>
                                                                                         <span className={modifiedDuringWindow ? "text-gray-400" : ""}>Clasifica</span>
-                                                                                        <CountryFlag homeTeam={originalQualifiedTeam} className="h-3.5 w-auto rounded-[2px] shrink-0 object-cover" />
                                                                                         <span className={`font-bold ${modifiedDuringWindow ? "text-gray-400" : "text-gray-700 dark:text-gray-200"}`}>{originalQualifiedTeam.nameEs}</span>
                                                                                         <span className="text-gray-400 dark:text-gray-500">{originalMethod}</span>
                                                                                         {modifiedDuringWindow && <span className="ml-0.5 text-red-400 no-underline" style={{textDecoration: 'none'}}>✗</span>}
@@ -511,9 +510,8 @@ export function PredictionGroup({
                                                                                 )}
                                                                                 {/* Modified prediction */}
                                                                                 {modifiedDuringWindow && qualifiedTeam && (
-                                                                                    <div className="flex items-center gap-1.5 text-[10px] font-medium text-amber-700 dark:text-amber-400">
+                                                                                    <div className="flex items-center gap-1 text-[10px] font-medium text-amber-700 dark:text-amber-400">
                                                                                         <span>✏️ Clasifica</span>
-                                                                                        <CountryFlag homeTeam={qualifiedTeam} className="h-3.5 w-auto rounded-[2px] shrink-0 object-cover" />
                                                                                         <span className="font-bold">{qualifiedTeam.nameEs}</span>
                                                                                         <span className="text-amber-500">{modifiedMethod}</span>
                                                                                     </div>
