@@ -29,6 +29,15 @@ type ShareTarget = {
     result: { homeScore: number; awayScore: number };
     points: number;
     userName: string;
+    // Knockout extra info
+    knockoutInfo?: {
+        predictedQualifierName?: string;
+        predictedMethod?: string; // "en los 90'" | "Tiempo extra" | "En penales"
+        actualQualifierName?: string;
+        actualMethod?: string;
+        modifiedDuringWindow?: boolean;
+        pointsBreakdown?: { base: number; qualifier: number; penalties: number; conviction: number };
+    };
 };
 
 type GroupShareTarget = {
@@ -37,7 +46,8 @@ type GroupShareTarget = {
     homeFlagDataUrl: string;
     awayFlagDataUrl: string;
     result: { homeScore: number; awayScore: number };
-    predictions: { userName: string; homeScore: number; awayScore: number; points: number; jokerActivated?: boolean; isCurrentUser?: boolean }[];
+    predictions: { userName: string; homeScore: number; awayScore: number; points: number; jokerActivated?: boolean; isCurrentUser?: boolean; qualifiedTeamName?: string; predictedMethod?: string; modifiedDuringWindow?: boolean }[];
+    knockoutResult?: { qualifiedTeamName: string; method: string };
 };
 
 export function PredictionGroup({
@@ -362,10 +372,16 @@ export function PredictionGroup({
                                                             const isKnockout = match.stage !== "group";
                                                             const qualifiedTeamId = "qualifiedTeamId" in userPrediction ? userPrediction.qualifiedTeamId : undefined;
                                                             const penaltiesIfDraw = "penaltiesIfDraw" in userPrediction ? userPrediction.penaltiesIfDraw : undefined;
+                                                            const modifiedDuringWindow = "modifiedDuringWindow" in userPrediction ? (userPrediction as { modifiedDuringWindow?: boolean }).modifiedDuringWindow : false;
                                                             const qualifiedTeam = qualifiedTeamId ? teamsByFifaCode[qualifiedTeamId] : null;
-                                                            // Use real result draw status if available (window modifications only update qualifiedTeamId/penaltiesIfDraw, not scores)
                                                             const resultWasDraw = result && result.homeScore !== undefined ? result.homeScore === result.awayScore : null;
-                                                            const isDraw = resultWasDraw !== null ? resultWasDraw : userPrediction.homeScore === userPrediction.awayScore;
+                                                            const originalPredictionWasDraw = userPrediction.homeScore === userPrediction.awayScore;
+                                                            // Original qualifier: derived from original score (if non-draw) or same as current (if draw, not modified)
+                                                            const originalQualifiedId = modifiedDuringWindow && !originalPredictionWasDraw
+                                                                ? (userPrediction.homeScore > userPrediction.awayScore ? match.homeTeamId : match.awayTeamId)
+                                                                : qualifiedTeamId;
+                                                            const originalQualifiedTeam = originalQualifiedId ? teamsByFifaCode[originalQualifiedId] : null;
+                                                            const isConvictionBonus = isKnockout && originalPredictionWasDraw && !modifiedDuringWindow && resultWasDraw;
 
                                                             const isMyRow = isFinished && !isKnockoutAwaitingQualifier && currentUserId && user.uid === currentUserId && homeTeam && awayTeam && result;
 
@@ -430,6 +446,28 @@ export function PredictionGroup({
                                                                                             result: { homeScore: result.homeScore, awayScore: result.awayScore },
                                                                                             points: points ?? 0,
                                                                                             userName: user.name,
+                                                                                            ...(isKnockout && result.qualifiedTeamId && (() => {
+                                                                                                const predQualId = "qualifiedTeamId" in userPrediction ? userPrediction.qualifiedTeamId : undefined;
+                                                                                                const predPenalties = "penaltiesIfDraw" in userPrediction ? (userPrediction as { penaltiesIfDraw?: boolean }).penaltiesIfDraw : undefined;
+                                                                                                const predMod = "modifiedDuringWindow" in userPrediction ? (userPrediction as { modifiedDuringWindow?: boolean }).modifiedDuringWindow : false;
+                                                                                                const resWasDraw = result.homeScore === result.awayScore;
+                                                                                                const predMethod = resWasDraw ? (predPenalties ? "En penales" : "Tiempo extra") : "en los 90'";
+                                                                                                const actMethod = resWasDraw ? (result.wentToPenalties ? "En penales" : "Tiempo extra") : "en los 90'";
+                                                                                                const scoreResultKO = calculatePredictionPoints(userPrediction as Parameters<typeof calculatePredictionPoints>[0], result);
+                                                                                                return { knockoutInfo: {
+                                                                                                    predictedQualifierName: predQualId ? teamsByFifaCode[predQualId]?.nameEs : undefined,
+                                                                                                    predictedMethod: predMethod,
+                                                                                                    actualQualifierName: teamsByFifaCode[result.qualifiedTeamId]?.nameEs,
+                                                                                                    actualMethod: actMethod,
+                                                                                                    modifiedDuringWindow: predMod ?? false,
+                                                                                                    pointsBreakdown: {
+                                                                                                        base: scoreResultKO.basePoints ?? 0,
+                                                                                                        qualifier: scoreResultKO.qualifierPoints ?? 0,
+                                                                                                        penalties: scoreResultKO.penaltiesPoints ?? 0,
+                                                                                                        conviction: scoreResultKO.convictionBonus ?? 0,
+                                                                                                    },
+                                                                                                }};
+                                                                                            })()),
                                                                                         });
                                                                                     }}
                                                                                     className="flex items-center justify-center w-7 h-7 rounded-full bg-gradient-to-br from-violet-500 to-pink-500 text-white shadow-md hover:scale-105 transition-transform disabled:opacity-50"
@@ -444,16 +482,42 @@ export function PredictionGroup({
                                                                         )}
                                                                     </div>
 
-                                                                    {isKnockout && qualifiedTeam && (() => {
-                                                                        const method = isDraw
+                                                                    {isKnockout && (() => {
+                                                                        if (!originalQualifiedTeam && !qualifiedTeam) return null;
+
+                                                                        // Original bet line
+                                                                        const originalMethod = originalPredictionWasDraw
+                                                                            ? (modifiedDuringWindow ? "en el tiempo extra" : (penaltiesIfDraw ? "en penales" : "en el tiempo extra"))
+                                                                            : "en los 90'";
+                                                                        const originalFailed = isFinished && result?.qualifiedTeamId && originalQualifiedId !== result.qualifiedTeamId;
+
+                                                                        // Modified bet line (only shown when modifiedDuringWindow)
+                                                                        const modifiedMethod = resultWasDraw
                                                                             ? (penaltiesIfDraw ? "en penales" : "en el tiempo extra")
                                                                             : "en los 90'";
+
                                                                         return (
-                                                                            <div className="flex items-center gap-1.5 pl-8 text-[10px] text-gray-500 dark:text-gray-400 font-medium">
-                                                                                <span>Clasifica</span>
-                                                                                <CountryFlag homeTeam={qualifiedTeam} className="h-3.5 w-auto rounded-[2px] shrink-0 object-cover" />
-                                                                                <span className="font-bold text-gray-700 dark:text-gray-200">{qualifiedTeam.nameEs}</span>
-                                                                                <span className="text-gray-400 dark:text-gray-500">{method}</span>
+                                                                            <div className="pl-8 space-y-0.5">
+                                                                                {/* Original prediction */}
+                                                                                {originalQualifiedTeam && (
+                                                                                    <div className={`flex items-center gap-1.5 text-[10px] font-medium ${modifiedDuringWindow ? "opacity-50 line-through" : "text-gray-500 dark:text-gray-400"}`}>
+                                                                                        <span className={modifiedDuringWindow ? "text-gray-400" : ""}>Clasifica</span>
+                                                                                        <CountryFlag homeTeam={originalQualifiedTeam} className="h-3.5 w-auto rounded-[2px] shrink-0 object-cover" />
+                                                                                        <span className={`font-bold ${modifiedDuringWindow ? "text-gray-400" : "text-gray-700 dark:text-gray-200"}`}>{originalQualifiedTeam.nameEs}</span>
+                                                                                        <span className="text-gray-400 dark:text-gray-500">{originalMethod}</span>
+                                                                                        {modifiedDuringWindow && <span className="ml-0.5 text-red-400 no-underline" style={{textDecoration: 'none'}}>✗</span>}
+                                                                                        {isConvictionBonus && <span className="ml-1 rounded-full bg-yellow-100 dark:bg-yellow-900/40 px-1.5 py-0.5 text-[9px] font-black text-yellow-700 dark:text-yellow-400 no-underline" style={{textDecoration: 'none'}}>🏆 convicción</span>}
+                                                                                    </div>
+                                                                                )}
+                                                                                {/* Modified prediction */}
+                                                                                {modifiedDuringWindow && qualifiedTeam && (
+                                                                                    <div className="flex items-center gap-1.5 text-[10px] font-medium text-amber-700 dark:text-amber-400">
+                                                                                        <span>✏️ Clasifica</span>
+                                                                                        <CountryFlag homeTeam={qualifiedTeam} className="h-3.5 w-auto rounded-[2px] shrink-0 object-cover" />
+                                                                                        <span className="font-bold">{qualifiedTeam.nameEs}</span>
+                                                                                        <span className="text-amber-500">{modifiedMethod}</span>
+                                                                                    </div>
+                                                                                )}
                                                                             </div>
                                                                         );
                                                                     })()}
@@ -478,20 +542,37 @@ export function PredictionGroup({
                                                         fetchFlagDataUrl(awayTeam.iso2),
                                                     ]);
                                                     setLoadingShareMatchId(null);
+                                                    const isKO = match.stage !== "group";
+                                                    const resWasDraw = result.homeScore === result.awayScore;
                                                     setGroupShareTarget({
                                                         homeTeamName: homeTeam.name,
                                                         awayTeamName: awayTeam.name,
                                                         homeFlagDataUrl,
                                                         awayFlagDataUrl,
                                                         result: { homeScore: result.homeScore, awayScore: result.awayScore },
-                                                        predictions: allPredictions.map(p => ({
-                                                            userName: p.userName,
-                                                            homeScore: p.homeScore,
-                                                            awayScore: p.awayScore,
-                                                            points: p.points,
-                                                            jokerActivated: p.jokerActivated,
-                                                            isCurrentUser: p.userId === currentUserId,
-                                                        })),
+                                                        predictions: allPredictions.map(p => {
+                                                            const predWasDraw = p.homeScore === p.awayScore;
+                                                            const predMethod = isKO && resWasDraw
+                                                                ? (p.penaltiesIfDraw ? "penales" : "TE")
+                                                                : isKO ? "90'" : undefined;
+                                                            return {
+                                                                userName: p.userName,
+                                                                homeScore: p.homeScore,
+                                                                awayScore: p.awayScore,
+                                                                points: p.points,
+                                                                jokerActivated: p.jokerActivated,
+                                                                isCurrentUser: p.userId === currentUserId,
+                                                                qualifiedTeamName: isKO && p.qualifiedTeamId ? teamsByFifaCode[p.qualifiedTeamId]?.nameEs : undefined,
+                                                                predictedMethod: predMethod,
+                                                                modifiedDuringWindow: p.modifiedDuringWindow,
+                                                            };
+                                                        }),
+                                                        ...(isKO && result.qualifiedTeamId ? {
+                                                            knockoutResult: {
+                                                                qualifiedTeamName: teamsByFifaCode[result.qualifiedTeamId]?.nameEs ?? result.qualifiedTeamId,
+                                                                method: resWasDraw ? (result.wentToPenalties ? "Penales" : "Tiempo extra") : "90'",
+                                                            }
+                                                        } : {}),
                                                     });
                                                 }}
                                                 className="mt-3 w-full flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-violet-500 to-pink-500 py-2.5 text-xs font-black text-white shadow-md hover:opacity-90 transition disabled:opacity-50"

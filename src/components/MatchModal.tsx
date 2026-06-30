@@ -622,26 +622,51 @@ export function MatchModal({ match, onClose, attendanceStatus, onClearAttendance
                                 </div>
                             ) : isFinished && scoreResult && homeTeam && awayTeam ? (
                                 <div className="my-2 overflow-hidden rounded-2xl shadow-sm">
-                                    {/* Points banner */}
+                                    {/* Points banner — use exactScore/correctResult, not raw points */}
                                     <div className={`px-4 py-4 text-center ${
-                                        scoreResult.points >= 5
+                                        scoreResult.exactScore
                                             ? "bg-green-500"
-                                            : scoreResult.points > 0
+                                            : scoreResult.correctResult
                                             ? "bg-yellow-500"
+                                            : scoreResult.points > 0
+                                            ? "bg-blue-500"
                                             : "bg-red-500"
                                     }`}>
                                         <p className="text-3xl font-black text-white">+{scoreResult.points} pts</p>
                                         <p className="mt-0.5 text-xs font-semibold text-white/80">
-                                            {scoreResult.points >= 5
+                                            {scoreResult.exactScore
                                                 ? "¡Marcador exacto! 🎯"
-                                                : scoreResult.points > 0
+                                                : scoreResult.correctResult
                                                 ? "¡Resultado correcto! ✅"
+                                                : scoreResult.points > 0
+                                                ? "Puntos por clasificado/penales 🏆"
                                                 : "No acertaste ❌"}
                                         </p>
                                         {prediction.jokerActivated && (
                                             <p className="mt-1 text-xs font-black text-white/90">🃏 Joker · puntos x2</p>
                                         )}
                                     </div>
+
+                                    {/* Points breakdown for knockout */}
+                                    {isKnockout && (
+                                        <div className="bg-gray-50 dark:bg-gray-700 px-4 py-2.5 flex items-center justify-center gap-3 flex-wrap text-[11px] font-semibold text-gray-600 dark:text-gray-300">
+                                            <span className={scoreResult.basePoints ? "text-green-600 dark:text-green-400" : "text-gray-400 line-through"}>
+                                                Marcador +{scoreResult.basePoints ?? 0}
+                                            </span>
+                                            <span className="text-gray-300 dark:text-gray-600">·</span>
+                                            <span className={scoreResult.qualifierPoints ? "text-green-600 dark:text-green-400" : "text-gray-400 line-through"}>
+                                                Clasificado +{scoreResult.qualifierPoints ?? 0}
+                                            </span>
+                                            <span className="text-gray-300 dark:text-gray-600">·</span>
+                                            <span className={scoreResult.penaltiesPoints ? "text-green-600 dark:text-green-400" : "text-gray-400 line-through"}>
+                                                Penales +{scoreResult.penaltiesPoints ?? 0}
+                                            </span>
+                                            {(scoreResult.convictionBonus ?? 0) > 0 && <>
+                                                <span className="text-gray-300 dark:text-gray-600">·</span>
+                                                <span className="text-yellow-600 dark:text-yellow-400">🏆 Convicción +{scoreResult.convictionBonus}</span>
+                                            </>}
+                                        </div>
+                                    )}
 
                                     {/* Comparison rows */}
                                     <div className="bg-white dark:bg-gray-600 divide-y divide-gray-100 dark:divide-gray-500">
@@ -655,16 +680,13 @@ export function MatchModal({ match, onClose, attendanceStatus, onClearAttendance
                                             {isKnockout && prediction.qualifiedTeamId && (() => {
                                                 const qualTeam = teamsByFifaCode[prediction.qualifiedTeamId];
                                                 const resultWasDraw = resultMatch?.homeScore === resultMatch?.awayScore;
-                                                // Always show method when result was draw; undefined penaltiesIfDraw = no penales = tiempo extra
                                                 const method = resultWasDraw
                                                     ? (prediction.penaltiesIfDraw ? "En penales" : "Tiempo extra")
                                                     : "en los 90'";
                                                 return (
                                                     <p className="mt-1 text-center text-xs text-gray-500 dark:text-gray-400">
                                                         Clasifica: <span className="font-bold">{qualTeam?.nameEs}</span>
-                                                        {resultWasDraw && (
-                                                            <span className="ml-1">· {method}</span>
-                                                        )}
+                                                        {resultWasDraw && <span className="ml-1">· {method}</span>}
                                                         {prediction.modifiedDuringWindow && (
                                                             <span className="ml-1 text-amber-600 dark:text-amber-400">(modificado)</span>
                                                         )}

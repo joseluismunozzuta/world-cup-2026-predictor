@@ -11,10 +11,18 @@ type Props = {
     result: { homeScore: number; awayScore: number };
     points: number;
     userName: string;
+    knockoutInfo?: {
+        predictedQualifierName?: string;
+        predictedMethod?: string;
+        actualQualifierName?: string;
+        actualMethod?: string;
+        modifiedDuringWindow?: boolean;
+        pointsBreakdown?: { base: number; qualifier: number; penalties: number; conviction: number };
+    };
 };
 
 export const PredictionShareCard = forwardRef<HTMLDivElement, Props>(
-    ({ homeTeamName, awayTeamName, homeFlagDataUrl, awayFlagDataUrl, prediction, result, points, userName }, ref) => {
+    ({ homeTeamName, awayTeamName, homeFlagDataUrl, awayFlagDataUrl, prediction, result, points, userName, knockoutInfo }, ref) => {
         const isExact =
             prediction.homeScore === result.homeScore &&
             prediction.awayScore === result.awayScore;
@@ -30,6 +38,8 @@ export const PredictionShareCard = forwardRef<HTMLDivElement, Props>(
             ? "🎯 Resultado exacto"
             : isCorrect
             ? "✅ Resultado correcto"
+            : knockoutInfo && points > 0
+            ? "🏆 Puntos por clasificado/penales"
             : "❌ Fallaste esta";
 
         const accent = points > 0 ? "#4ade80" : "#f87171";
@@ -76,14 +86,58 @@ export const PredictionShareCard = forwardRef<HTMLDivElement, Props>(
                 </div>
 
                 {/* Prediction score */}
-                <div style={{ padding: "12px 24px 20px", textAlign: "center" }}>
+                <div style={{ padding: "12px 24px 16px", textAlign: "center" }}>
                     <p style={{ fontSize: 10, fontWeight: 700, color: "#64748b", letterSpacing: 1.5, margin: "0 0 6px" }}>
                         MI PRONÓSTICO{prediction.jokerActivated ? "  🃏" : ""}
                     </p>
                     <p style={{ fontSize: 64, fontWeight: 900, margin: 0, lineHeight: 1, letterSpacing: -2 }}>
                         {prediction.homeScore} — {prediction.awayScore}
                     </p>
+                    {knockoutInfo?.predictedQualifierName && (
+                        <div style={{ marginTop: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                            <span style={{ fontSize: 10, color: "#64748b", fontWeight: 600 }}>Clasifica:</span>
+                            <span style={{
+                                fontSize: 11, fontWeight: 800, color: knockoutInfo.modifiedDuringWindow ? "#f59e0b" : "#e2e8f0",
+                                padding: "3px 10px", borderRadius: 999,
+                                background: knockoutInfo.modifiedDuringWindow ? "rgba(245,158,11,0.15)" : "rgba(255,255,255,0.08)",
+                            }}>
+                                {knockoutInfo.predictedQualifierName} · {knockoutInfo.predictedMethod}
+                                {knockoutInfo.modifiedDuringWindow && " ✏️"}
+                            </span>
+                        </div>
+                    )}
                 </div>
+
+                {/* Knockout points breakdown */}
+                {knockoutInfo?.pointsBreakdown && (
+                    <div style={{
+                        margin: "0 20px 12px",
+                        background: "rgba(255,255,255,0.04)",
+                        borderRadius: 12,
+                        padding: "10px 16px",
+                        display: "flex",
+                        justifyContent: "space-around",
+                        gap: 4,
+                    }}>
+                        {[
+                            { label: "Marcador", val: knockoutInfo.pointsBreakdown.base },
+                            { label: "Clasificado", val: knockoutInfo.pointsBreakdown.qualifier },
+                            { label: "Penales", val: knockoutInfo.pointsBreakdown.penalties },
+                            ...(knockoutInfo.pointsBreakdown.conviction > 0
+                                ? [{ label: "🏆 Convicción", val: knockoutInfo.pointsBreakdown.conviction }]
+                                : []),
+                        ].map(({ label, val }) => (
+                            <div key={label} style={{ textAlign: "center" }}>
+                                <p style={{ fontSize: 14, fontWeight: 900, margin: 0, color: val > 0 ? "#4ade80" : "#475569" }}>
+                                    +{val}
+                                </p>
+                                <p style={{ fontSize: 8, fontWeight: 600, color: "#475569", margin: "2px 0 0", letterSpacing: 0.5 }}>
+                                    {label.toUpperCase()}
+                                </p>
+                            </div>
+                        ))}
+                    </div>
+                )}
 
                 {/* Result row */}
                 <div style={{
@@ -102,6 +156,11 @@ export const PredictionShareCard = forwardRef<HTMLDivElement, Props>(
                         <p style={{ fontSize: 22, fontWeight: 900, margin: 0 }}>
                             {result.homeScore} — {result.awayScore}
                         </p>
+                        {knockoutInfo?.actualQualifierName && (
+                            <p style={{ fontSize: 9, color: "#94a3b8", fontWeight: 600, margin: "3px 0 0" }}>
+                                Clasificó: {knockoutInfo.actualQualifierName} · {knockoutInfo.actualMethod}
+                            </p>
+                        )}
                     </div>
                     <div style={{ textAlign: "right" }}>
                         <p style={{ fontSize: 9, color: "#64748b", fontWeight: 700, margin: "0 0 4px", letterSpacing: 1 }}>

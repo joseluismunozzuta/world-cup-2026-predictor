@@ -9,6 +9,9 @@ type PredictionRow = {
     points: number;
     jokerActivated?: boolean;
     isCurrentUser?: boolean;
+    qualifiedTeamName?: string;
+    predictedMethod?: string;
+    modifiedDuringWindow?: boolean;
 };
 
 type Props = {
@@ -18,6 +21,7 @@ type Props = {
     awayFlagDataUrl: string;
     result: { homeScore: number; awayScore: number };
     predictions: PredictionRow[];
+    knockoutResult?: { qualifiedTeamName: string; method: string };
 };
 
 const AVATAR_COLORS = [
@@ -49,7 +53,7 @@ function getMedal(sorted: PredictionRow[], i: number): string {
 }
 
 export const PredictionGroupShareCard = forwardRef<HTMLDivElement, Props>(
-    ({ homeTeamName, awayTeamName, homeFlagDataUrl, awayFlagDataUrl, result, predictions }, ref) => {
+    ({ homeTeamName, awayTeamName, homeFlagDataUrl, awayFlagDataUrl, result, predictions, knockoutResult }, ref) => {
         const sorted = [...predictions].sort((a, b) => b.points - a.points);
 
         return (
@@ -98,6 +102,11 @@ export const PredictionGroupShareCard = forwardRef<HTMLDivElement, Props>(
                     <p style={{ fontSize: 8, fontWeight: 600, color: "#475569", letterSpacing: 1, margin: "4px 0 0" }}>
                         RESULTADO FINAL
                     </p>
+                    {knockoutResult && (
+                        <p style={{ fontSize: 10, fontWeight: 700, color: "#94a3b8", margin: "4px 0 0" }}>
+                            Clasificó: <span style={{ color: "#e2e8f0" }}>{knockoutResult.qualifiedTeamName}</span> · {knockoutResult.method}
+                        </p>
+                    )}
                 </div>
 
                 {/* Grid of avatars — 4 per row */}
@@ -175,6 +184,21 @@ export const PredictionGroupShareCard = forwardRef<HTMLDivElement, Props>(
                                     {pred.homeScore}-{pred.awayScore}
                                     {pred.jokerActivated && <span style={{ marginLeft: 2, fontSize: 10 }}>🃏</span>}
                                 </span>
+
+                                {/* Qualifier prediction */}
+                                {pred.qualifiedTeamName && (
+                                    <span style={{
+                                        fontSize: 7.5,
+                                        fontWeight: 700,
+                                        color: pred.modifiedDuringWindow ? "#f59e0b" : "#64748b",
+                                        textAlign: "center",
+                                        lineHeight: 1.2,
+                                        maxWidth: 80,
+                                    }}>
+                                        {pred.qualifiedTeamName}{pred.predictedMethod ? ` · ${pred.predictedMethod}` : ""}
+                                        {pred.modifiedDuringWindow ? " ✏️" : ""}
+                                    </span>
+                                )}
 
                                 {/* Points */}
                                 <span style={{

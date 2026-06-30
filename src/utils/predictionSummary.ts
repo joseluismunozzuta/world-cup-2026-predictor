@@ -32,6 +32,7 @@ export type MatchPredictionSummary = {
         jokerActivated?: boolean;
         qualifiedTeamId?: string;
         penaltiesIfDraw?: boolean;
+        modifiedDuringWindow?: boolean;
     }[];
     createdAt?: unknown;
     updatedAt?: unknown;
@@ -92,6 +93,7 @@ export async function generateMatchPredictionSummary({
                 ...base,
                 qualifiedTeamId: prediction.qualifiedTeamId,
                 penaltiesIfDraw: prediction.penaltiesIfDraw,
+                modifiedDuringWindow: prediction.modifiedDuringWindow,
             }).filter(([, v]) => v !== undefined)
         );
     });

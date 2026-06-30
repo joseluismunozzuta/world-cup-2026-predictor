@@ -765,6 +765,14 @@ export default function Home() {
     return acc;
   }, {});
 
+  // Sort matches within each day by kickoff time, then matchNumber as tiebreaker
+  Object.values(matchesByDate).forEach((dayMatches) => {
+    dayMatches.sort((a, b) =>
+      new Date(a.kickoff).getTime() - new Date(b.kickoff).getTime() ||
+      a.matchNumber - b.matchNumber
+    );
+  });
+
   const groupedMatches = Object.entries(matchesByDate).sort(
     ([a], [b]) => a.localeCompare(b)
   );

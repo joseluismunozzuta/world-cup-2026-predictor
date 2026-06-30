@@ -216,6 +216,7 @@ export type MatchStartedPrediction = {
     jokerActivated?: boolean;
     qualifiedTeamId?: string;
     penaltiesIfDraw?: boolean;
+    modifiedDuringWindow?: boolean;
 };
 
 export type StartedMatchPredictionsMap = Record<
@@ -252,6 +253,7 @@ export function subscribeToStartedMatchPredictions(
                     jokerActivated: data.jokerActivated ?? false,
                     qualifiedTeamId: data.qualifiedTeamId,
                     penaltiesIfDraw: data.penaltiesIfDraw,
+                    modifiedDuringWindow: data.modifiedDuringWindow,
                 };
             });
 
