@@ -6,9 +6,13 @@ import { LeaderboardRow } from "@/utils/leaderboard";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { PlayerProfileModal } from "./PlayerProfileModal";
 import { evaluateAchievements } from "@/utils/achievements";
+import { SpecialPredictionsMap } from "@/lib/predictions";
+import { SpecialResults } from "@/lib/specialResults";
 
 type Props = {
     leaderboard: LeaderboardRow[];
+    specialPredictions: SpecialPredictionsMap;
+    specialResults: SpecialResults | null;
 };
 
 const MEDALS: Record<number, string> = { 0: "🥇", 1: "🥈", 2: "🥉" };
@@ -21,7 +25,7 @@ function getMedal(leaderboard: LeaderboardRow[], index: number): string | null {
     return MEDALS[index] ?? null;
 }
 
-export function LeaderboardTable({ leaderboard }: Props) {
+export function LeaderboardTable({ leaderboard, specialPredictions, specialResults }: Props) {
     const [selectedRow, setSelectedRow] = useState<{ row: LeaderboardRow; rank: number } | null>(null);
 
     return (
@@ -116,6 +120,8 @@ export function LeaderboardTable({ leaderboard }: Props) {
                 <PlayerProfileModal
                     row={selectedRow.row}
                     rank={selectedRow.rank}
+                    specialPrediction={specialPredictions[selectedRow.row.userId]}
+                    specialResults={specialResults}
                     onClose={() => setSelectedRow(null)}
                 />
             )}

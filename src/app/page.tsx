@@ -1027,7 +1027,7 @@ export default function Home() {
         )}
 
         <div className={activeTab === "leaderboard" ? "block" : "hidden"}>
-          <LeaderboardTable leaderboard={leaderboard} />
+          <LeaderboardTable leaderboard={leaderboard} specialPredictions={specialPredictions} specialResults={specialResults} />
         </div>
 
         {activeTab === "admin" && isAdmin && (

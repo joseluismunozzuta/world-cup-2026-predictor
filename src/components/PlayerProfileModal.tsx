@@ -3,10 +3,18 @@
 import { LeaderboardRow } from "@/utils/leaderboard";
 import { evaluateAchievements, TIER_STYLES } from "@/utils/achievements";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import { SpecialPrediction } from "@/lib/predictions";
+import { SpecialResults } from "@/lib/specialResults";
+import { teamsByFifaCode, teamsById } from "@/data/Teams";
+
+import { playersById } from "@/data/players";
+import { CountryFlag } from "./CountryFlag";
 
 type Props = {
     row: LeaderboardRow;
     rank: number;
+    specialPrediction?: SpecialPrediction;
+    specialResults: SpecialResults | null;
     onClose: () => void;
 };
 
@@ -22,7 +30,7 @@ function StatCard({ label, value, sub }: { label: string; value: string | number
     );
 }
 
-export function PlayerProfileModal({ row, rank, onClose }: Props) {
+export function PlayerProfileModal({ row, rank, specialPrediction, specialResults, onClose }: Props) {
     const achievements = evaluateAchievements(row);
     const unlocked = achievements.filter((a) => a.unlocked);
     const locked = achievements.filter((a) => !a.unlocked);
@@ -39,7 +47,7 @@ export function PlayerProfileModal({ row, rank, onClose }: Props) {
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header con gradiente */}
-                <div className="relative bg-gradient-to-br from-gray-900 to-gray-700 rounded-t-3xl sm:rounded-t-3xl px-6 pt-8 pb-6">
+                <div className="relative bg-linear-to-br from-gray-900 to-gray-700 rounded-t-3xl sm:rounded-t-3xl px-6 pt-8 pb-6">
                     <button
                         onClick={onClose}
                         className="absolute right-4 top-4 rounded-full bg-white/20 px-3 py-1 text-sm font-bold text-white"
@@ -107,6 +115,100 @@ export function PlayerProfileModal({ row, rank, onClose }: Props) {
                     <StatCard label="Pronósticos" value={row.predictionsMade} />
                 </div>
 
+                {/* Pronósticos especiales */}
+                {specialPrediction && (() => {
+                    const championTeam = specialPrediction.championTeamId ? teamsById[specialPrediction.championTeamId] ?? null : null;
+                    const runnerUpTeam = specialPrediction.runnerUpTeamId ? teamsById[specialPrediction.runnerUpTeamId] ?? null : null;
+                    const topScorer = specialPrediction.topScorerPlayerId ? playersById[specialPrediction.topScorerPlayerId] ?? null : null;
+                    const bestPlayer = specialPrediction.bestPlayerId ? playersById[specialPrediction.bestPlayerId] ?? null : null;
+                    const topScorerTeam = topScorer ? teamsByFifaCode[topScorer.teamId] ?? null : null;
+                    const bestPlayerTeam = bestPlayer ? teamsByFifaCode[bestPlayer.teamId] ?? null : null;
+
+                    const items = [
+                        { label: "🏆 Campeón", team: championTeam, resultId: specialResults?.championTeamId, predId: specialPrediction.championTeamId },
+                        { label: "🥈 Subcampeón", team: runnerUpTeam, resultId: specialResults?.runnerUpTeamId, predId: specialPrediction.runnerUpTeamId },
+                        { label: "⚽ Goleador", player: topScorer, flagTeam: topScorerTeam, resultId: specialResults?.topScorerPlayerId, predId: specialPrediction.topScorerPlayerId },
+                        { label: "⭐ Mejor jugador", player: bestPlayer, flagTeam: bestPlayerTeam, resultId: specialResults?.bestPlayerId, predId: specialPrediction.bestPlayerId },
+                    ];
+
+                    return (
+                        <div className="mx-4 mt-3 rounded-2xl bg-white dark:bg-gray-800 p-4 shadow-sm">
+                            <p className="text-xs font-black uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-3">Pronósticos especiales</p>
+                            <div className="grid grid-cols-2 gap-2">
+                                {items.map(({ label, team, player, flagTeam, resultId, predId }) => {
+                                    const hit = resultId && predId === resultId;
+                                    const miss = resultId && predId !== resultId;
+                                    const bgClass = hit
+                                        ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
+                                        : miss
+                                        ? "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800"
+                                        : "bg-gray-50 dark:bg-gray-700/50 border-gray-100 dark:border-gray-600";
+                                    return (
+                                        <div key={label} className={`rounded-xl border p-3 flex flex-col gap-2 ${bgClass}`}>
+                                            <p className="text-[10px] text-center font-bold uppercase tracking-wider text-gray-400 dark:text-gray-400">{label}</p>
+                                            {team ? (
+                                                <>
+                                                    <CountryFlag homeTeam={team} className="h-5 w-8 mx-auto flex justify-center rounded object-cover shadow-sm" />
+                                                    <div className="flex items-center justify-between mx-auto">
+                                                        <span className="text-sm font-black text-gray-800 dark:text-gray-100">{team.nameEs}</span>
+                                                        {hit && <span className="text-base text-green-500">✓</span>}
+                                                        {miss && <span className="text-base text-red-400">✗</span>}
+                                                    </div>
+                                                </>
+                                            ) : player ? (
+                                                <>
+                                                    {flagTeam && <CountryFlag homeTeam={flagTeam} className="h-5 w-8 mx-auto flex rounded object-cover shadow-sm" />}
+                                                    <div className="flex mx-auto items-center justify-between">
+                                                        <span className="text-sm capitalize font-black text-gray-800 dark:text-gray-100 leading-tight">{player.shirtName.toLowerCase()}</span>
+                                                        {hit && <span className="text-base text-green-500">✓</span>}
+                                                        {miss && <span className="text-base text-red-400">✗</span>}
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <p className="text-xs text-gray-400 italic">Sin pronóstico</p>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            {(() => {
+                                const raw = specialPrediction.updatedAt ?? specialPrediction.createdAt;
+                                const date =
+                                    raw && typeof raw === "object" && "toDate" in raw && typeof (raw as { toDate: unknown }).toDate === "function"
+                                        ? (raw as { toDate: () => Date }).toDate()
+                                        : null;
+                                if (!date) return null;
+                                return (
+                                    <p className="mt-3 text-center text-[10px] text-gray-400 dark:text-gray-500">
+                                        Agregado el {date.toLocaleDateString("es-PE", { day: "numeric", month: "long", year: "numeric" })} a las {date.toLocaleTimeString("es-PE", { hour: "numeric", minute: "2-digit" })}
+                                    </p>
+                                );
+                            })()}
+                        </div>
+                    );
+                })()}
+
+                {/* Rachas */}
+                <div className="mx-4 mt-3 rounded-2xl bg-white dark:bg-gray-800 p-4 shadow-sm">
+                    <p className="text-xs font-black uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-3">Rachas</p>
+                    <div className="flex justify-around">
+                        <div className="text-center">
+                            <p className="text-3xl font-black text-gray-950 dark:text-gray-50">
+                                {row.currentStreak > 0 ? `🔥 ${row.currentStreak}` : row.currentStreak}
+                            </p>
+                            <p className="mt-1 text-xs font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-400">Actual</p>
+                        </div>
+                        <div className="w-px bg-gray-100 dark:bg-gray-700" />
+                        <div className="text-center">
+                            <p className="text-3xl font-black text-gray-950 dark:text-gray-50">
+                                {row.bestStreak > 0 ? `⭐ ${row.bestStreak}` : row.bestStreak}
+                            </p>
+                            <p className="mt-1 text-xs font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-400">Mejor racha</p>
+                        </div>
+                    </div>
+                </div>
+
                 {/* Jokers */}
                 <div className="mx-4 mt-3 rounded-2xl bg-white dark:bg-gray-800 p-4 shadow-sm">
                     <p className="text-xs font-black uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-3">Jokers 🃏</p>
@@ -143,26 +245,6 @@ export function PlayerProfileModal({ row, rank, onClose }: Props) {
                             ))}
                         </div>
                     )}
-                </div>
-
-                {/* Rachas */}
-                <div className="mx-4 mt-3 rounded-2xl bg-white dark:bg-gray-800 p-4 shadow-sm">
-                    <p className="text-xs font-black uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-3">Rachas</p>
-                    <div className="flex justify-around">
-                        <div className="text-center">
-                            <p className="text-3xl font-black text-gray-950 dark:text-gray-50">
-                                {row.currentStreak > 0 ? `🔥 ${row.currentStreak}` : row.currentStreak}
-                            </p>
-                            <p className="mt-1 text-xs font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-400">Actual</p>
-                        </div>
-                        <div className="w-px bg-gray-100 dark:bg-gray-700" />
-                        <div className="text-center">
-                            <p className="text-3xl font-black text-gray-950 dark:text-gray-50">
-                                {row.bestStreak > 0 ? `⭐ ${row.bestStreak}` : row.bestStreak}
-                            </p>
-                            <p className="mt-1 text-xs font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-400">Mejor racha</p>
-                        </div>
-                    </div>
                 </div>
 
                 {/* Achievements */}
