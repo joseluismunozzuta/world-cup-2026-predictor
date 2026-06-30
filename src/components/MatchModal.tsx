@@ -979,8 +979,8 @@ export function MatchModal({ match, onClose, attendanceStatus, onClearAttendance
                             )}
                     </div>
 
-                    {/* Modification window — admin close button always visible regardless of prediction */}
-                    {isFinished && windowIsOpen && isKnockout && isAdmin && (
+                    {/* Modification window — admin banner (always visible) + modification form if admin has a prediction */}
+                    {isFinished && windowIsOpen && isKnockout && isAdmin && homeTeam && awayTeam && (
                         <div className="mt-4 rounded-3xl bg-amber-50 border border-amber-200 p-5">
                             <div className="flex items-center justify-between">
                                 <p className="text-base font-black text-amber-900">⏱ Tiempo Extra</p>
@@ -992,6 +992,41 @@ export function MatchModal({ match, onClose, attendanceStatus, onClearAttendance
                             <p className="mt-2 text-sm text-amber-700">
                                 El partido terminó en empate. Los usuarios pueden modificar su pronóstico.
                             </p>
+
+                            {prediction && <>
+                                {prediction.modifiedDuringWindow && (
+                                    <p className="mt-2 text-xs text-amber-600 font-semibold">✓ Ya modificaste esta apuesta.</p>
+                                )}
+                                <div className="mt-4 space-y-3">
+                                    <div>
+                                        <p className="text-xs font-bold text-amber-800 uppercase tracking-wider mb-2">¿Quién clasifica?</p>
+                                        <div className="flex gap-2">
+                                            <button onClick={() => setWindowQualified(match.homeTeamId ?? "")} className={`flex-1 rounded-xl py-2 text-sm font-bold border ${windowQualified === match.homeTeamId ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-700 border-gray-200"}`}>{homeTeam.nameEs}</button>
+                                            <button onClick={() => setWindowQualified(match.awayTeamId ?? "")} className={`flex-1 rounded-xl py-2 text-sm font-bold border ${windowQualified === match.awayTeamId ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-700 border-gray-200"}`}>{awayTeam.nameEs}</button>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-bold text-amber-800 uppercase tracking-wider mb-2">¿Hay penales?</p>
+                                        <div className="flex gap-2">
+                                            <button onClick={() => setWindowPenalties(false)} className={`flex-1 rounded-xl py-2 text-sm font-bold border ${!windowPenalties ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-700 border-gray-200"}`}>No</button>
+                                            <button onClick={() => setWindowPenalties(true)} className={`flex-1 rounded-xl py-2 text-sm font-bold border ${windowPenalties ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-700 border-gray-200"}`}>Sí</button>
+                                        </div>
+                                    </div>
+                                    <button
+                                        disabled={!windowQualified || isSavingWindow}
+                                        onClick={async () => {
+                                            if (!windowQualified) return;
+                                            setIsSavingWindow(true);
+                                            await onSaveWindowModification(match.id, windowQualified, windowPenalties);
+                                            setIsSavingWindow(false);
+                                        }}
+                                        className="w-full rounded-2xl bg-amber-600 py-3 text-sm font-black text-white disabled:opacity-50"
+                                    >
+                                        {isSavingWindow ? "Guardando..." : "Guardar modificación"}
+                                    </button>
+                                </div>
+                            </>}
+
                             <button
                                 onClick={() => onCloseModificationWindow(match.id)}
                                 className="mt-3 w-full rounded-2xl bg-gray-200 py-2 text-xs font-bold text-gray-600"
