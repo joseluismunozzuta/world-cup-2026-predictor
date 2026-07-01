@@ -292,7 +292,13 @@ export function PredictionGroup({
                             </>
                         )}
 
-                        {matchStarted && !result?.modificationWindowOpen && (
+                        {matchStarted && (() => {
+                            const windowActuallyOpen =
+                                result?.modificationWindowOpen === true &&
+                                !!result?.modificationWindowClosesAt &&
+                                new Date(result.modificationWindowClosesAt).getTime() > Date.now();
+                            return !windowActuallyOpen;
+                        })() && (
                             <Accordion
                                 className="mt-4 rounded-2xl bg-white/70 dark:bg-white/10 px-4"
                                 onClick={(e) => e.stopPropagation()}
