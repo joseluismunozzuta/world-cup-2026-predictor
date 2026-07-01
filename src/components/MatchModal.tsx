@@ -145,7 +145,7 @@ export function MatchModal({ match, onClose, attendanceStatus, onClearAttendance
     const canActivateJoker = jokerActive || jokersRemaining > 0;
 
     const isAdmin = appUser.role === "admin";
-    const canPredict = status === "scheduled" || isAdmin;
+    const canPredict = status === "scheduled";
 
     const predictedDraw = homeScore !== "" && awayScore !== "" && Number(homeScore) === Number(awayScore);
     const knockoutFieldsValid = !isKnockout || (
