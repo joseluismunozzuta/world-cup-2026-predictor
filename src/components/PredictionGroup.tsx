@@ -388,7 +388,11 @@ export function PredictionGroup({
                                                                 : qualifiedTeamId;
                                                             const originalQualifiedTeam = originalQualifiedId ? teamsByFifaCode[originalQualifiedId] : null;
                                                             const competingForConviction = isKnockout && originalPredictionWasDraw && !modifiedDuringWindow && resultWasDraw;
+                                                            const penaltiesMatch = result?.wentToPenalties === undefined
+                                                                ? true
+                                                                : (penaltiesIfDraw ?? false) === result.wentToPenalties;
                                                             const isConvictionBonus = competingForConviction
+                                                                && penaltiesMatch
                                                                 && (!result?.qualifiedTeamId || originalQualifiedId === result.qualifiedTeamId);
 
                                                             const isMyRow = isFinished && !isKnockoutAwaitingQualifier && currentUserId && user.uid === currentUserId && homeTeam && awayTeam && result;
