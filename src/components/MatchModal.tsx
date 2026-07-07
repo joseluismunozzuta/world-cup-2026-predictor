@@ -1026,7 +1026,7 @@ export function MatchModal({ match, onClose, attendanceStatus, onClearAttendance
                                     {!showModifyForm ? (
                                         <button
                                             onClick={() => setShowModifyForm(true)}
-                                            className="mt-3 w-75 flex justify-center mx-auto rounded-2xl shadow-md shadow-gray-700  bg-purple-200 py-2.5 text-sm text-gray-700 font-semibold hover:bg-blue-100 transition"
+                                            className="mt-3 w-50 flex justify-center mx-auto rounded-2xl shadow-md shadow-gray-700  bg-purple-200 py-2.5 text-xs text-gray-700 font-semibold hover:bg-blue-100 transition"
                                         >
                                             ✏️ Modificar este pronóstico
                                         </button>
